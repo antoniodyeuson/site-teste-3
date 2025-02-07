@@ -1,21 +1,49 @@
-import express from 'express';
+import express, { Request } from 'express';
 import { auth, checkRole } from '../middleware/auth';
 import Subscription from '../models/Subscription';
 import Content from '../models/Content';
 import Creator from '../models/Creator';
 import SavedContent from '../models/SavedContent';
-import { isAuthenticated } from '../middlewares/auth';
-import { isSubscriber } from '../middlewares/roles';
+import User from '../models/User';
+import Purchase from '../models/Purchase';
+import { User as UserType, Content as ContentType, Purchase as PurchaseType } from '../types';
+import { AuthRequest } from '../types/express';
+
+interface PopulatedSubscription {
+  creatorId: {
+    _id: string;
+    name: string;
+    profileImage?: string;
+    coverImage?: string;
+    price?: number;
+  };
+}
+
+interface PopulatedContent {
+  _id: string;
+  title: string;
+  preview?: string;
+  type: string;
+  price?: number;
+  likes?: number;
+  creatorId: {
+    _id: string;
+    name: string;
+    profileImage?: string;
+  };
+  isPreview: boolean;
+  createdAt: Date;
+}
 
 const router = express.Router();
 
 // Get subscriber's subscriptions
-router.get('/subscriptions/my', auth, checkRole(['subscriber']), async (req, res) => {
+router.get('/subscriptions/my', auth, checkRole(['subscriber']), async (req: AuthRequest, res) => {
   try {
     const subscriptions = await Subscription.find({
-      subscriberId: req.user.id,
+      subscriberId: req.user!.id,
       status: 'active'
-    }).populate('creatorId', 'name profileImage coverImage price');
+    }).populate<{ creatorId: PopulatedSubscription['creatorId'] }>('creatorId', 'name profileImage coverImage price');
 
     const creators = subscriptions.map(sub => ({
       id: sub.creatorId._id,
@@ -33,7 +61,7 @@ router.get('/subscriptions/my', auth, checkRole(['subscriber']), async (req, res
 });
 
 // Get recommended creators
-router.get('/creators/recommended', auth, async (req, res) => {
+router.get('/creators/recommended', auth, async (req: AuthRequest, res) => {
   try {
     const creators = await Creator.find()
       .select('name profileImage coverImage price')
@@ -41,7 +69,7 @@ router.get('/creators/recommended', auth, async (req, res) => {
       .lean();
 
     const userSubs = await Subscription.find({
-      subscriberId: req.user.id,
+      subscriberId: req.user!.id,
       status: 'active'
     }).select('creatorId');
 
@@ -60,7 +88,7 @@ router.get('/creators/recommended', auth, async (req, res) => {
 });
 
 // Get trending content
-router.get('/content/trending', auth, async (req, res) => {
+router.get('/content/trending', auth, async (req: AuthRequest, res) => {
   try {
     const trendingContent = await Content.find({ status: 'active' })
       .sort({ likes: -1, createdAt: -1 })
@@ -69,7 +97,7 @@ router.get('/content/trending', auth, async (req, res) => {
       .lean();
 
     const userPurchases = await Purchase.find({
-      userId: req.user.id,
+      userId: req.user!.id,
       status: 'completed'
     }).select('contentId');
 
@@ -99,7 +127,7 @@ router.get('/content/trending', auth, async (req, res) => {
 });
 
 // Rota para buscar dados do dashboard do assinante
-router.get('/dashboard', isAuthenticated, isSubscriber, async (req, res) => {
+router.get('/dashboard', auth, checkRole(['subscriber']), async (req: AuthRequest, res) => {
   try {
     const data = {
       stats: {
@@ -121,10 +149,10 @@ router.get('/dashboard', isAuthenticated, isSubscriber, async (req, res) => {
 });
 
 // Salvar conteúdo
-router.post('/content/save/:contentId', auth, checkRole(['subscriber']), async (req, res) => {
+router.post('/content/save/:contentId', auth, checkRole(['subscriber']), async (req: AuthRequest, res) => {
   try {
     const { contentId } = req.params;
-    const subscriberId = req.user.id;
+    const subscriberId = req.user!.id;
 
     // Verifica se o conteúdo existe
     const content = await Content.findById(contentId);
@@ -160,10 +188,10 @@ router.post('/content/save/:contentId', auth, checkRole(['subscriber']), async (
 });
 
 // Remover conteúdo salvo
-router.delete('/content/save/:contentId', auth, checkRole(['subscriber']), async (req, res) => {
+router.delete('/content/save/:contentId', auth, checkRole(['subscriber']), async (req: AuthRequest, res) => {
   try {
     const { contentId } = req.params;
-    const subscriberId = req.user.id;
+    const subscriberId = req.user!.id;
 
     const result = await SavedContent.findOneAndDelete({
       subscriberId,
@@ -181,16 +209,16 @@ router.delete('/content/save/:contentId', auth, checkRole(['subscriber']), async
 });
 
 // Listar conteúdos salvos
-router.get('/content/saved', auth, checkRole(['subscriber']), async (req, res) => {
+router.get('/content/saved', auth, async (req: AuthRequest, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 12;
     const skip = (page - 1) * limit;
 
     const savedContent = await SavedContent.find({
-      subscriberId: req.user.id
+      subscriberId: req.user!.id
     })
-    .populate({
+    .populate<{ contentId: PopulatedContent }>({
       path: 'contentId',
       populate: {
         path: 'creatorId',
@@ -199,9 +227,10 @@ router.get('/content/saved', auth, checkRole(['subscriber']), async (req, res) =
     })
     .sort('-savedAt')
     .skip(skip)
-    .limit(limit);
+    .limit(limit)
+    .lean();
 
-    const total = await SavedContent.countDocuments({ subscriberId: req.user.id });
+    const total = await SavedContent.countDocuments({ subscriberId: req.user!.id });
 
     res.json({
       items: savedContent.map(saved => ({
@@ -225,7 +254,7 @@ router.get('/content/saved', auth, checkRole(['subscriber']), async (req, res) =
   }
 });
 
-router.get('/stats', isAuthenticated, isSubscriber, async (req, res) => {
+router.get('/stats', auth, checkRole(['subscriber']), async (req, res) => {
   try {
     const stats = {
       totalSubscriptions: 0, // Implementar lógica real
@@ -236,6 +265,63 @@ router.get('/stats', isAuthenticated, isSubscriber, async (req, res) => {
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+  }
+});
+
+// Rota para listar criadores
+router.get('/creators', auth, async (req, res) => {
+  try {
+    const creators = await User.find({ role: 'creator' });
+    const creatorsData = creators.map(creator => ({
+      id: creator._id,
+      name: creator.name,
+      profileImage: creator.profileImage,
+      coverImage: creator.coverImage,
+      price: creator.price
+    }));
+    res.json(creatorsData);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao buscar criadores' });
+  }
+});
+
+// Rota para buscar conteúdo de um criador
+router.get('/creator/:creatorId/content', auth, async (req: AuthRequest, res) => {
+  try {
+    const { creatorId } = req.params;
+    const subscriberId = req.user!._id;
+
+    const isSubscribed = await Purchase.exists({
+      userId: subscriberId,
+      creatorId
+    });
+
+    const content = await Content.find({ creatorId })
+      .populate('creatorId', 'name profileImage')
+      .lean();
+
+    const contentData = content.map(item => ({
+      id: item._id,
+      title: item.title,
+      preview: item.preview,
+      type: item.type,
+      price: item.price,
+      likes: item.likes,
+      creator: {
+        id: item.creatorId._id,
+        name: item.creatorId.name,
+        profileImage: item.creatorId.profileImage
+      },
+      isPreview: item.isPreview,
+      createdAt: item.createdAt
+    }));
+
+    res.json({
+      isSubscribed,
+      content: contentData
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao buscar conteúdo' });
   }
 });
 

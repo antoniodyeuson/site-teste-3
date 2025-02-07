@@ -11,20 +11,21 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
-      throw new Error();
+      return res.status(401).json({ message: 'Token não fornecido' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
     const user = await User.findById(decoded.userId);
 
     if (!user) {
-      throw new Error();
+      return res.status(401).json({ message: 'Usuário não encontrado' });
     }
 
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Please authenticate' });
+    console.error('Erro de autenticação:', error);
+    res.status(401).json({ message: 'Token inválido' });
   }
 };
 

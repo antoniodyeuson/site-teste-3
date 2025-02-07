@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/Admin/AdminLayout';
 import { FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
 import api from '@/services/api';
-import UserEditModal from '@/components/Admin/UserEditModal';
+import UserEditModal from '../../components/Admin/UserEditModal';
 
 interface User {
   id: string;
@@ -13,7 +13,7 @@ interface User {
   createdAt: string;
 }
 
-export default function UsersManagement() {
+export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,27 +22,20 @@ export default function UsersManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [currentPage, searchTerm]);
-
   const fetchUsers = async () => {
     try {
-      const response = await api.get('/admin/users', {
-        params: {
-          page: currentPage,
-          search: searchTerm,
-          limit: 10
-        }
-      });
-      setUsers(response.data.users);
-      setTotalPages(response.data.totalPages);
+      const response = await api.get('/admin/users');
+      setUsers(response.data);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Erro ao buscar usuários:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
@@ -50,12 +43,12 @@ export default function UsersManagement() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    if (window.confirm('Tem certeza que deseja excluir este usuário?')) {
       try {
         await api.delete(`/admin/users/${userId}`);
-        fetchUsers();
+        await fetchUsers(); // Recarrega a lista após excluir
       } catch (error) {
-        console.error('Error deleting user:', error);
+        console.error('Erro ao excluir usuário:', error);
       }
     }
   };
@@ -64,26 +57,27 @@ export default function UsersManagement() {
     try {
       await api.patch(`/admin/users/${selectedUser?.id}`, userData);
       setIsEditModalOpen(false);
-      fetchUsers();
+      await fetchUsers(); // Recarrega a lista após atualizar
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error('Erro ao atualizar usuário:', error);
     }
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  const filteredUsers = users.filter(user => 
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Usuários">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">User Management</h1>
+          <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
           <div className="flex items-center space-x-4">
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search users..."
+                placeholder="Buscar usuários..."
                 className="pl-10 pr-4 py-2 border rounded-md"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -93,99 +87,85 @@ export default function UsersManagement() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joined
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {user.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {user.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      user.role === 'creator'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      user.status === 'active'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleEditUser(user)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      <FiEdit2 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(user.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <FiTrash2 className="w-5 h-5" />
-                    </button>
-                  </td>
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Nome
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Tipo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Ações
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-center space-x-2">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => setCurrentPage(page)}
-              className={`px-4 py-2 rounded-md ${
-                currentPage === page
-                  ? 'bg-primary text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center">
+                      Carregando...
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">{user.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          user.role === 'admin' 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : user.role === 'creator'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          user.status === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {user.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditUser(user)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <FiEdit2 className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <FiTrash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* Edit Modal */}
       {isEditModalOpen && selectedUser && (
         <UserEditModal
           user={selectedUser}

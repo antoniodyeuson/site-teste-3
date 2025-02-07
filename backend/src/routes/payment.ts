@@ -7,8 +7,15 @@ import {
 } from '../services/stripe';
 import Creator from '../models/Creator';
 import Subscription from '../models/Subscription';
+import { AuthRequest } from '../types/express';
+import { Creator as CreatorType } from '../types';
 
 const router = express.Router();
+
+interface CreatorWithStripe extends CreatorType {
+  stripePriceId?: string;
+  stripeAccountId?: string;
+}
 
 // Connect Stripe account
 router.post('/connect-stripe', auth, checkRole(['creator']), async (req, res) => {
@@ -29,11 +36,19 @@ router.post('/connect-stripe', auth, checkRole(['creator']), async (req, res) =>
 });
 
 // Create subscription
-router.post('/subscribe/:creatorId', auth, async (req, res) => {
+router.post('/subscribe/:creatorId', auth, async (req: AuthRequest, res) => {
   try {
-    const creator = await Creator.findById(req.params.creatorId);
+    const creator = await Creator.findById(req.params.creatorId) as CreatorWithStripe;
     if (!creator) {
       return res.status(404).json({ message: 'Creator not found' });
+    }
+
+    if (!creator.stripePriceId || !creator.stripeAccountId) {
+      return res.status(400).json({ message: 'Creator stripe account not configured' });
+    }
+
+    if (!req.user?.stripeCustomerId) {
+      return res.status(400).json({ message: 'User stripe account not configured' });
     }
 
     const subscription = await createSubscription(
@@ -43,7 +58,7 @@ router.post('/subscribe/:creatorId', auth, async (req, res) => {
     );
 
     const newSubscription = new Subscription({
-      subscriberId: req.user._id,
+      subscriberId: req.user.id,
       creatorId: creator._id,
       price: creator.subscriptionPrice,
       stripeSubscriptionId: subscription.id,
@@ -53,6 +68,7 @@ router.post('/subscribe/:creatorId', auth, async (req, res) => {
     await newSubscription.save();
     res.json(newSubscription);
   } catch (error) {
+    console.error('Subscription error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

@@ -1,10 +1,16 @@
-export interface User {
+import { Document } from 'mongoose';
+
+export interface User extends Document {
   _id: string;
+  name: string;
   email: string;
   password: string;
-  name: string;
-  role: 'creator' | 'subscriber' | 'admin';
+  role: 'admin' | 'creator' | 'subscriber';
   profileImage?: string;
+  coverImage?: string;
+  stripeCustomerId?: string;
+  price?: number;
+  stripeAccountId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,16 +23,27 @@ export interface Creator extends User {
   subscriberCount: number;
   contentCount: number;
   stripeAccountId?: string;
+  stripePriceId?: string;
 }
 
-export interface Content {
+export interface Content extends Document {
   _id: string;
-  creatorId: string;
   title: string;
   description?: string;
-  type: 'image' | 'video' | 'audio' | 'live';
+  type: 'image' | 'video' | 'audio' | 'text';
   url: string;
-  thumbnailUrl?: string;
+  preview?: string;
+  isPreview: boolean;
+  price?: number;
+  likes: number;
+  creatorId: User;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface Purchase extends Document {
+  userId: User;
+  contentId: Content;
+  price: number;
+  createdAt: Date;
 } 

@@ -36,13 +36,13 @@ export default function ContentGrid({ creatorId }: ContentGridProps) {
   const getContentIcon = (type: Content['type']) => {
     switch (type) {
       case 'image':
-        return <FiImage className="h-6 w-6" />;
+        return <FiImage className="w-4 h-4 text-white" />;
       case 'video':
-        return <FiVideo className="h-6 w-6" />;
+        return <FiVideo className="w-4 h-4 text-white" />;
       case 'audio':
-        return <FiMusic className="h-6 w-6" />;
+        return <FiMusic className="w-4 h-4 text-white" />;
       case 'live':
-        return <FiPlay className="h-6 w-6" />;
+        return <FiPlay className="w-4 h-4 text-white" />;
     }
   };
 

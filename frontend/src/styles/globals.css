@@ -1,3 +1,5 @@
+/* eslint-disable */
+/* @tailwind directives are processed by PostCSS and Tailwind */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,19 +11,23 @@
 }
 
 @layer components {
+  .input-field {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-white;
+  }
+
   .btn-primary {
-    @apply bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors;
+    @apply px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50;
   }
 
   .btn-secondary {
-    @apply bg-secondary text-white px-4 py-2 rounded-md hover:bg-secondary-dark transition-colors;
+    @apply px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600;
   }
 
-  .input-field {
-    @apply w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+  .btn-danger {
+    @apply px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50;
   }
 
   .card {
-    @apply bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6;
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6;
   }
 } 

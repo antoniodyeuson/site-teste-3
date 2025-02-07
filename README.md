@@ -5,78 +5,125 @@ CreatorHub é uma plataforma de conteúdo por assinatura que conecta criadores e
 ## 🚀 Tecnologias
 
 ### Backend
-- Node.js
-- Express
+- Node.js com Express
 - TypeScript
-- MongoDB
+- MongoDB com Mongoose
 - JWT para autenticação
-- Multer para upload de arquivos
-- Stripe para pagamentos
-- Socket.io para chat em tempo real
+- Bcrypt para criptografia
+- Cors para segurança
+- Express Validator
 
 ### Frontend
-- Next.js
+- Next.js 14
 - TypeScript
 - TailwindCSS
 - Context API para gerenciamento de estado
 - Axios para requisições HTTP
 - React Icons
+- HeadlessUI para componentes acessíveis
+- Dark mode com next-themes
 
-## 📋 Pré-requisitos
+## 🛠️ Instalação
 
-- Node.js 18+
+### Pré-requisitos
+- Node.js >= 18
 - MongoDB
-- Conta Stripe (para processamento de pagamentos)
 - Variáveis de ambiente configuradas
 
-## 🔧 Instalação
-
-1. Clone o repositório:
+### Backend
 ```bash
-git clone https://github.com/seu-usuario/creatorhub.git
-cd creatorhub
-```
-
-2. Instale as dependências do backend:
-```bash
+# Instalar dependências
 cd backend
 npm install
-```
 
-3. Instale as dependências do frontend:
-```bash
-cd ../frontend
-npm install
-```
+# Configurar ambiente
+cp .env.example .env
 
-4. Configure as variáveis de ambiente conforme os exemplos em:
-- backend/.env.example
-- frontend/.env.example
-
-5. Inicie o servidor de desenvolvimento:
-
-Backend:
-```bash
+# Iniciar em desenvolvimento
 npm run dev
 ```
 
-Frontend:
+### Frontend
 ```bash
+# Instalar dependências
+cd frontend
+npm install
+
+# Configurar ambiente
+cp .env.example .env.local
+
+# Iniciar em desenvolvimento
 npm run dev
 ```
 
 ## 🌟 Funcionalidades
 
 ### Criadores
-- Upload de conteúdo (imagens, vídeos, áudio)
+- Upload de conteúdo
 - Definição de preço de assinatura
 - Dashboard com métricas
-- Chat com assinantes
-- Relatórios financeiros
+- Personalização de perfil
 
 ### Assinantes
 - Descoberta de criadores
 - Assinatura de conteúdo
 - Salvamento de conteúdo favorito
-- Chat com criadores
-- Histórico de visualiz 
+- Histórico de visualizações
+- Dark/Light mode
+
+### Admin
+- Gestão de usuários
+- Moderação de conteúdo
+- Relatórios básicos
+
+## 🔒 Segurança
+- JWT para autenticação de API
+- Proteção de rotas por papel (admin/creator/subscriber)
+- Validação de dados
+- HTTPS em produção
+- Headers de segurança básicos
+
+## 💅 UI/UX
+- Design responsivo
+- Tema escuro/claro
+- Loading states
+- Feedback de erro
+- Componentes acessíveis
+
+## 📦 Estrutura do Projeto
+
+```
+├── backend/
+│   ├── src/
+│   │   ├── middleware/  # Middlewares
+│   │   ├── models/      # Modelos
+│   │   ├── routes/      # Rotas
+│   │   └── types/       # Tipos
+│   └── ...
+└── frontend/
+    ├── src/
+    │   ├── components/  # Componentes
+    │   ├── contexts/    # Contextos
+    │   ├── pages/       # Páginas
+    │   ├── services/    # Serviços
+    │   └── styles/      # Estilos
+    └── ...
+```
+
+## 🤝 Contribuindo
+
+1. Fork o projeto
+2. Crie sua branch de feature (`git checkout -b feature/NovaFuncionalidade`)
+3. Commit suas mudanças (`git commit -m 'Add: nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/NovaFuncionalidade`)
+5. Abra um Pull Request
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+## 📧 Contato
+
+Seu Nome - [@seutwitter](https://twitter.com/seutwitter) - email@exemplo.com
+
+Link do Projeto: [https://github.com/seu-usuario/creatorhub](https://github.com/seu-usuario/creatorhub) 

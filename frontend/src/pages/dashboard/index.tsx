@@ -18,6 +18,7 @@ interface DashboardData {
     contentCount: number;
     subscriberGrowth: number;
     earningsGrowth: number;
+    totalUsers: number;
   };
   contents: Array<{
     id: string;
@@ -165,40 +166,28 @@ export default function CreatorDashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
-            icon={<FiUsers className="w-8 h-8" />}
+            title="Total de Usuários"
+            value={data.stats.totalUsers}
+            icon={FiUsers}
+            loading={loading}
+          />
+          <StatCard
             title="Inscritos"
             value={data.stats.subscribers}
-            trend={{
-              value: data.stats.subscriberGrowth,
-              isPositive: data.stats.subscriberGrowth > 0
-            }}
-            description="Total de inscritos"
-            color="blue"
+            icon={FiUsers}
+            loading={loading}
           />
           <StatCard
-            icon={<FiDollarSign className="w-8 h-8" />}
             title="Ganhos"
             value={`R$ ${data.stats.earnings.toLocaleString()}`}
-            trend={{
-              value: data.stats.earningsGrowth,
-              isPositive: data.stats.earningsGrowth > 0
-            }}
-            description="Ganhos totais"
-            color="green"
+            icon={FiDollarSign}
+            loading={loading}
           />
           <StatCard
-            icon={<FiEye className="w-8 h-8" />}
             title="Visualizações"
-            value={data.stats.views.toLocaleString()}
-            description="Total de visualizações"
-            color="purple"
-          />
-          <StatCard
-            icon={<FiHeart className="w-8 h-8" />}
-            title="Curtidas"
-            value={data.stats.likes.toLocaleString()}
-            description="Total de curtidas"
-            color="red"
+            value={data.stats.views}
+            icon={FiEye}
+            loading={loading}
           />
         </div>
 

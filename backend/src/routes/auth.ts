@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { auth } from '../middleware/auth';
+import { AuthRequest } from '../types/express';
 
 const router = express.Router();
 
@@ -93,22 +94,15 @@ router.post('/login', async (req, res) => {
 });
 
 // Get current user
-router.get('/me', auth, async (req, res) => {
+router.get('/me', auth, async (req: AuthRequest, res: Response) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     if (!user) {
-      return res.status(401).json({ message: 'Usuário não encontrado' });
+      return res.status(404).json({ message: 'Usuário não encontrado' });
     }
-    
-    res.json({
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      profileImage: user.profileImage
-    });
+    res.json(user);
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('Erro ao buscar usuário:', error);
     res.status(500).json({ message: 'Erro no servidor' });
   }
 });

@@ -28,44 +28,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (!loading) {
-      const publicRoutes = ['/', '/login', '/register', '/explore'];
-      const isPublicRoute = publicRoutes.includes(router.pathname);
-
-      if (!user && !isPublicRoute) {
-        router.push('/login');
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setLoading(false);
         return;
       }
 
-      if (user && router.pathname === '/login') {
-        if (user.role === 'admin') {
-          router.push('/admin/dashboard');
-        } else if (user.role === 'creator') {
-          router.push('/dashboard');
-        } else {
-          router.push('/subscriber-dashboard');
+      try {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        const response = await api.get('/auth/me');
+        
+        if (response.data) {
+          setUser(response.data);
         }
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          localStorage.removeItem('token');
+          delete api.defaults.headers.common['Authorization'];
+        }
+      } finally {
+        setLoading(false);
       }
-    }
-  }, [loading, user, router.pathname]);
+    };
+
+    initializeAuth();
+  }, []);
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        const response = await api.get('/auth/me');
-        setUser(response.data);
-      }
+      const response = await api.get('/auth/me');
+      setUser(response.data);
     } catch (error) {
-      localStorage.removeItem('token');
-      delete api.defaults.headers.common['Authorization'];
-    } finally {
-      setLoading(false);
+      // Não remover token aqui, deixar o interceptor cuidar disso
+      console.error('Erro ao verificar autenticação:', error);
     }
   };
 
@@ -75,18 +72,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
-
-      // Aguardar a atualização do estado antes de redirecionar
-      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Redirecionar baseado no papel do usuário
       if (user.role === 'admin') {
-        await router.push('/admin/dashboard');
+        router.push('/admin/dashboard');
       } else if (user.role === 'creator') {
-        await router.push('/dashboard');
+        router.push('/dashboard');
       } else {
-        await router.push('/subscriber-dashboard');
+        router.push('/subscriber-dashboard');
       }
     } catch (error) {
       console.error('Erro no login:', error);
@@ -100,21 +95,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('token', token);
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     setUser(user);
-    
-    if (user.role === 'creator') {
-      router.push('/dashboard');
-    } else if (user.role === 'admin') {
-      router.push('/admin/dashboard');
-    } else {
-      router.push('/subscriber-dashboard');
-    }
   };
 
   const logout = async () => {
     localStorage.removeItem('token');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
-    await router.push('/');
+    await router.push('/login');
   };
 
   const updateUser = async (data: Partial<User>) => {

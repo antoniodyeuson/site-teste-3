@@ -28,24 +28,26 @@ interface PaginatedResponse {
 export default function SavedContent() {
   const { user } = useAuth();
   const router = useRouter();
-  const [data, setData] = useState<PaginatedResponse | null>(null);
+  const [savedContent, setSavedContent] = useState<SavedContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     if (!user || user.role !== 'subscriber') {
       router.push('/login');
       return;
     }
-    fetchSavedContent(currentPage);
+    fetchSavedContent();
   }, [user, router, currentPage]);
 
-  const fetchSavedContent = async (page: number) => {
+  const fetchSavedContent = async () => {
     try {
-      const response = await api.get(`/api/subscriber/content/saved?page=${page}`);
-      setData(response.data);
+      const response = await api.get<PaginatedResponse>(`/subscriber/saved?page=${currentPage}`);
+      setSavedContent(response.data.items);
+      setTotalPages(response.data.totalPages);
     } catch (error) {
-      console.error('Error fetching saved content:', error);
+      console.error('Erro ao buscar conteúdo salvo:', error);
     } finally {
       setLoading(false);
     }
@@ -53,17 +55,17 @@ export default function SavedContent() {
 
   const handleRemove = async (contentId: string) => {
     try {
-      await api.delete(`/api/subscriber/content/save/${contentId}`);
-      fetchSavedContent(currentPage); // Recarrega a lista
+      await api.delete(`/subscriber/saved/${contentId}`);
+      setSavedContent(prev => prev.filter(content => content.id !== contentId));
     } catch (error) {
-      console.error('Error removing content:', error);
+      console.error('Erro ao remover conteúdo:', error);
     }
   };
 
   if (loading) {
     return (
       <SubscriberLayout>
-        <div className="flex items-center justify-center h-screen">
+        <div className="flex justify-center items-center min-h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       </SubscriberLayout>
@@ -72,53 +74,50 @@ export default function SavedContent() {
 
   return (
     <SubscriberLayout>
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-8">Conteúdos Salvos</h1>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6">Conteúdo Salvo</h1>
 
-        {data?.items.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">Você ainda não salvou nenhum conteúdo</p>
+        {savedContent.length === 0 ? (
+          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <p className="text-gray-600 dark:text-gray-400">
+              Você ainda não salvou nenhum conteúdo
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data?.items.map((content) => (
-              <div key={content.id} className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="relative">
+            {savedContent.map((content) => (
+              <div
+                key={content.id}
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden"
+              >
+                <div className="relative aspect-video">
                   <img
                     src={content.preview}
                     alt={content.title}
-                    className="w-full h-48 object-cover"
+                    className="w-full h-full object-cover"
                   />
-                  <span className={`absolute top-2 right-2 px-2 py-1 rounded text-xs text-white ${
-                    content.type === 'video' ? 'bg-purple-500' : 'bg-blue-500'
-                  }`}>
-                    {content.type}
-                  </span>
+                  <div className="absolute top-2 right-2 flex space-x-2">
+                    <button
+                      onClick={() => handleRemove(content.id)}
+                      className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <FiTrash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="p-4">
-                  <div className="flex items-center mb-4">
+                  <h3 className="font-semibold mb-2">{content.title}</h3>
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                     <img
                       src={content.creator.profileImage}
                       alt={content.creator.name}
-                      className="w-8 h-8 rounded-full"
+                      className="w-6 h-6 rounded-full mr-2"
                     />
-                    <span className="ml-2 text-sm font-medium">{content.creator.name}</span>
+                    <span>{content.creator.name}</span>
                   </div>
-
-                  <h3 className="font-medium mb-2">{content.title}</h3>
-                  
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <span>
-                      Salvo em {new Date(content.savedAt).toLocaleDateString()}
-                    </span>
-                    <button
-                      onClick={() => handleRemove(content.id)}
-                      className="text-red-500 hover:text-red-700"
-                      title="Remover dos salvos"
-                    >
-                      <FiTrash2 className="w-5 h-5" />
-                    </button>
+                  <div className="mt-2 text-sm text-gray-500">
+                    Salvo em {new Date(content.savedAt).toLocaleDateString()}
                   </div>
                 </div>
               </div>
@@ -126,17 +125,17 @@ export default function SavedContent() {
           </div>
         )}
 
-        {/* Paginação */}
-        {data && data.totalPages > 1 && (
+        {/* Pagination */}
+        {totalPages > 1 && (
           <div className="flex justify-center mt-8 space-x-2">
-            {Array.from({ length: data.totalPages }, (_, i) => i + 1).map((page) => (
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
                 className={`px-4 py-2 rounded-md ${
                   currentPage === page
                     ? 'bg-primary text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 {page}

@@ -16,12 +16,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Interceptor de resposta para tratar erros de autenticação
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Apenas remover o token se ele existir
+      if (localStorage.getItem('token')) {
+        localStorage.removeItem('token');
+        delete api.defaults.headers.common['Authorization'];
+      }
     }
     return Promise.reject(error);
   }

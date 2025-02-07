@@ -14,6 +14,13 @@ export default function AdminSettings() {
   });
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState({
+    allowNewRegistrations: true,
+    requireEmailVerification: true,
+    maxUploadSize: 10,
+    allowedFileTypes: ['image', 'video', 'audio'],
+    maintenanceMode: false
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -70,8 +77,19 @@ export default function AdminSettings() {
     }
   };
 
+  const handleSettingsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/admin/settings', settings);
+      alert('Configurações salvas com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
+      alert('Erro ao salvar configurações');
+    }
+  };
+
   return (
-    <AdminLayout>
+    <AdminLayout title="Configurações">
       <div className="max-w-2xl mx-auto p-6">
         <h1 className="text-2xl font-bold mb-8">Configurações do Administrador</h1>
 
@@ -171,6 +189,92 @@ export default function AdminSettings() {
               </>
             )}
           </button>
+        </form>
+
+        <form onSubmit={handleSettingsSubmit} className="space-y-6 mt-6">
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium mb-4">Configurações Gerais</h2>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="font-medium">Novos Registros</label>
+                  <p className="text-sm text-gray-500">Permitir novos registros de usuários</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.allowNewRegistrations}
+                  onChange={(e) => setSettings({...settings, allowNewRegistrations: e.target.checked})}
+                  className="toggle"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="font-medium">Verificação de Email</label>
+                  <p className="text-sm text-gray-500">Exigir verificação de email</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.requireEmailVerification}
+                  onChange={(e) => setSettings({...settings, requireEmailVerification: e.target.checked})}
+                  className="toggle"
+                />
+              </div>
+
+              <div>
+                <label className="font-medium">Tamanho Máximo de Upload (MB)</label>
+                <input
+                  type="number"
+                  value={settings.maxUploadSize}
+                  onChange={(e) => setSettings({...settings, maxUploadSize: Number(e.target.value)})}
+                  className="input-field mt-1"
+                />
+              </div>
+
+              <div>
+                <label className="font-medium">Tipos de Arquivo Permitidos</label>
+                <div className="mt-2 space-x-4">
+                  {['image', 'video', 'audio'].map((type) => (
+                    <label key={type} className="inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={settings.allowedFileTypes.includes(type)}
+                        onChange={(e) => {
+                          const newTypes = e.target.checked
+                            ? [...settings.allowedFileTypes, type]
+                            : settings.allowedFileTypes.filter(t => t !== type);
+                          setSettings({...settings, allowedFileTypes: newTypes});
+                        }}
+                        className="checkbox"
+                      />
+                      <span className="ml-2 capitalize">{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="font-medium">Modo Manutenção</label>
+                  <p className="text-sm text-gray-500">Ativar modo de manutenção</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.maintenanceMode}
+                  onChange={(e) => setSettings({...settings, maintenanceMode: e.target.checked})}
+                  className="toggle"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button type="submit" className="btn-primary flex items-center">
+              <FiSave className="w-4 h-4 mr-2" />
+              Salvar Configurações
+            </button>
+          </div>
         </form>
       </div>
     </AdminLayout>

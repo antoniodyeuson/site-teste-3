@@ -4,8 +4,7 @@ import Creator from '../models/Creator';
 import Content from '../models/Content';
 import Subscription from '../models/Subscription';
 import { upload } from '../middleware/upload';
-import { isAuthenticated } from '../middlewares/auth';
-import { isCreator } from '../middlewares/roles';
+import { AuthRequest } from '../types/express';
 
 const router = express.Router();
 
@@ -34,9 +33,9 @@ const calculateEarnings = async (creatorId: string) => {
 };
 
 // Get creator profile
-router.get('/profile', auth, checkRole(['creator']), async (req, res) => {
+router.get('/profile', auth, checkRole(['creator']), async (req: AuthRequest, res) => {
   try {
-    const creator = await Creator.findById(req.user._id);
+    const creator = await Creator.findById(req.user!.id);
     res.json(creator);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -44,7 +43,7 @@ router.get('/profile', auth, checkRole(['creator']), async (req, res) => {
 });
 
 // Update creator profile
-router.patch('/profile', auth, checkRole(['creator']), upload.single('profileImage'), async (req, res) => {
+router.patch('/profile', auth, checkRole(['creator']), upload.single('profileImage'), async (req: AuthRequest, res) => {
   try {
     const updates = Object.keys(req.body);
     const allowedUpdates = ['name', 'bio', 'subscriptionPrice'];
@@ -54,7 +53,7 @@ router.patch('/profile', auth, checkRole(['creator']), upload.single('profileIma
       return res.status(400).json({ message: 'Invalid updates' });
     }
 
-    const creator = await Creator.findById(req.user._id);
+    const creator = await Creator.findById(req.user!.id);
     if (!creator) {
       return res.status(404).json({ message: 'Creator not found' });
     }
@@ -230,28 +229,35 @@ router.get('/preview', async (req, res) => {
 });
 
 // Get creator dashboard
-router.get('/dashboard', isAuthenticated, isCreator, async (req, res) => {
+router.get('/dashboard', auth, checkRole(['creator']), async (req: AuthRequest, res) => {
   try {
+    const creatorId = req.user!.id;
     const stats = {
-      subscribers: 100,
-      earnings: 5000,
-      views: 1500,
-      likes: 750,
-      contentCount: 25,
-      subscriberGrowth: 10,
-      earningsGrowth: 15
+      subscribers: await Subscription.countDocuments({ creatorId, status: 'active' }),
+      earnings: await calculateEarnings(creatorId),
+      contentCount: await Content.countDocuments({ creatorId }),
+      // ... outros stats
     };
 
-    const data = {
+    const recentContent = await Content.find({ creatorId })
+      .sort('-createdAt')
+      .limit(5)
+      .lean();
+
+    const recentSubscribers = await Subscription.find({ creatorId, status: 'active' })
+      .sort('-createdAt')
+      .limit(5)
+      .populate('subscriberId', 'name profileImage')
+      .lean();
+
+    res.json({
       stats,
-      contents: [], // Adicione aqui a lógica para buscar os conteúdos
-      subscribers: [] // Lista de subscribers mockada por enquanto
-    };
-
-    res.json(data);
+      recentContent,
+      recentSubscribers
+    });
   } catch (error) {
-    console.error('Erro ao buscar dados do dashboard:', error);
-    res.status(500).json({ error: 'Erro ao buscar dados do dashboard' });
+    console.error('Error fetching dashboard:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
