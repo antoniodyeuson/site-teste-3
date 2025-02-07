@@ -49,32 +49,41 @@ interface DashboardData {
   }>;
 }
 
-export default function Dashboard() {
-  const { user } = useAuth();
+export default function CreatorDashboard() {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('30days');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!user || user.role !== 'creator') {
-      router.push('/login');
-      return;
-    }
-    fetchDashboardData();
-  }, [user, router, timeframe]);
+    const checkUser = async () => {
+      if (authLoading) return;
+      
+      if (user && user.role !== 'creator') {
+        if (user.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/subscriber-dashboard');
+        }
+        return;
+      }
 
-  const fetchDashboardData = async () => {
-    try {
-      const response = await api.get(`/creator/dashboard?timeframe=${timeframe}`);
-      setData(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar dados do painel:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        const response = await api.get('/creator/dashboard');
+        setData(response.data);
+      } catch (error) {
+        console.error('Erro ao buscar dados do dashboard:', error);
+        setError('Erro ao carregar dados do dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkUser();
+  }, [user, router, authLoading]);
 
   const handleUpload = async (formData: FormData) => {
     try {
@@ -83,7 +92,8 @@ export default function Dashboard() {
           'Content-Type': 'multipart/form-data',
         },
       });
-      fetchDashboardData();
+      const response = await api.get('/creator/dashboard');
+      setData(response.data);
       setIsUploadModalOpen(false);
     } catch (error) {
       console.error('Erro ao fazer upload do conteúdo:', error);
@@ -98,7 +108,8 @@ export default function Dashboard() {
   const handleDeleteContent = async (contentId: string) => {
     try {
       await api.delete(`/content/${contentId}`);
-      fetchDashboardData();
+      const response = await api.get('/creator/dashboard');
+      setData(response.data);
     } catch (error) {
       console.error('Erro ao excluir conteúdo:', error);
     }
@@ -107,9 +118,17 @@ export default function Dashboard() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <div className="flex items-center justify-center h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="text-center text-red-600 p-4">{error}</div>
       </DashboardLayout>
     );
   }
@@ -151,7 +170,7 @@ export default function Dashboard() {
             value={data.stats.subscribers}
             trend={{
               value: data.stats.subscriberGrowth,
-              isPositive: data.stats.subscriberGrowth >= 0
+              isPositive: data.stats.subscriberGrowth > 0
             }}
             description="Total de inscritos"
             color="blue"
@@ -162,7 +181,7 @@ export default function Dashboard() {
             value={`R$ ${data.stats.earnings.toLocaleString()}`}
             trend={{
               value: data.stats.earningsGrowth,
-              isPositive: data.stats.earningsGrowth >= 0
+              isPositive: data.stats.earningsGrowth > 0
             }}
             description="Ganhos totais"
             color="green"
@@ -223,7 +242,7 @@ export default function Dashboard() {
                 Atividades Recentes
               </h2>
               <div className="space-y-4">
-                {data.recentActivities.map((activity) => (
+                {data.recentActivities?.map((activity) => (
                   <div key={activity.id} className="flex items-center space-x-4">
                     <img
                       src={activity.user.profileImage || '/default-avatar.png'}
@@ -245,6 +264,11 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
+                {(!data.recentActivities || data.recentActivities.length === 0) && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                    Nenhuma atividade recente
+                  </p>
+                )}
               </div>
             </div>
           </div>

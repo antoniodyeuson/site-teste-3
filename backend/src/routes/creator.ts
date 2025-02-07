@@ -4,6 +4,8 @@ import Creator from '../models/Creator';
 import Content from '../models/Content';
 import Subscription from '../models/Subscription';
 import { upload } from '../middleware/upload';
+import { isAuthenticated } from '../middlewares/auth';
+import { isCreator } from '../middlewares/roles';
 
 const router = express.Router();
 
@@ -228,58 +230,28 @@ router.get('/preview', async (req, res) => {
 });
 
 // Get creator dashboard
-router.get('/dashboard', auth, checkRole(['creator']), async (req, res) => {
+router.get('/dashboard', isAuthenticated, isCreator, async (req, res) => {
   try {
-    const creatorId = req.user.id;
+    const stats = {
+      subscribers: 100,
+      earnings: 5000,
+      views: 1500,
+      likes: 750,
+      contentCount: 25,
+      subscriberGrowth: 10,
+      earningsGrowth: 15
+    };
 
-    // Buscar estatísticas
-    const [subscribers, contents, earnings] = await Promise.all([
-      Subscription.countDocuments({ creatorId, status: 'active' }),
-      Content.find({ creatorId }).sort('-createdAt'),
-      calculateEarnings(creatorId)
-    ]);
+    const data = {
+      stats,
+      contents: [], // Adicione aqui a lógica para buscar os conteúdos
+      subscribers: [] // Lista de subscribers mockada por enquanto
+    };
 
-    // Calcular total de visualizações e curtidas
-    const totalViews = contents.reduce((sum, content) => sum + (content.views || 0), 0);
-    const totalLikes = contents.reduce((sum, content) => sum + (content.likes || 0), 0);
-
-    // Buscar inscritos recentes
-    const recentSubscribers = await Subscription.find({ 
-      creatorId, 
-      status: 'active' 
-    })
-      .populate('subscriberId', 'name email profileImage')
-      .sort('-createdAt')
-      .limit(5);
-
-    res.json({
-      stats: {
-        subscribers,
-        earnings,
-        views: totalViews,
-        likes: totalLikes,
-        contentCount: contents.length
-      },
-      contents: contents.map(content => ({
-        id: content._id,
-        title: content.title,
-        type: content.type,
-        preview: content.thumbnailUrl || content.url,
-        views: content.views || 0,
-        likes: content.likes || 0,
-        createdAt: content.createdAt
-      })),
-      subscribers: recentSubscribers.map(sub => ({
-        id: sub.subscriberId._id,
-        name: sub.subscriberId.name,
-        email: sub.subscriberId.email,
-        subscriptionDate: sub.createdAt,
-        profileImage: sub.subscriberId.profileImage
-      }))
-    });
+    res.json(data);
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    res.status(500).json({ message: 'Error fetching dashboard data' });
+    console.error('Erro ao buscar dados do dashboard:', error);
+    res.status(500).json({ error: 'Erro ao buscar dados do dashboard' });
   }
 });
 

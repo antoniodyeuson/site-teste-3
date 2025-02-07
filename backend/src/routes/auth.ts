@@ -57,39 +57,38 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Check user exists
     const user = await User.findOne({ email });
+    
     if (!user) {
       return res.status(400).json({ message: 'Credenciais inválidas' });
     }
 
-    // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Credenciais inválidas' });
     }
 
-    // Create token
     const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
+      { 
+        id: user._id,
+        email: user.email,
+        role: user.role
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '1d' }
     );
 
-    res.json({
-      token,
+    res.json({ 
+      token, 
       user: {
         id: user._id,
-        name: user.name,
         email: user.email,
-        role: user.role,
-        profileImage: user.profileImage
+        role: user.role
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Erro no servidor' });
+    console.error('Erro no login:', error);
+    res.status(500).json({ error: 'Erro ao realizar login' });
   }
 });
 

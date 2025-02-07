@@ -6,6 +6,7 @@ import { FiHeart, FiBookmark, FiClock, FiTrendingUp, FiPlay } from 'react-icons/
 import SubscriberLayout from '@/components/Subscriber/SubscriberLayout';
 import Link from 'next/link';
 import StatCard from '@/components/Dashboard/StatCard';
+import DashboardLayout from '@/components/Dashboard/DashboardLayout';
 
 interface DashboardData {
   stats: {
@@ -49,132 +50,105 @@ interface DashboardData {
   }>;
 }
 
-interface StatCardProps {
-  icon: React.ReactNode;
-  title: string;
-  value: number | string;
-  description: string;
-  trend?: number;
-  color: 'blue' | 'green' | 'purple' | 'red' | 'pink';
-}
-
-const colorVariants = {
-  blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400',
-  green: 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400',
-  purple: 'bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400',
-  red: 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400',
-  pink: 'bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400'
-};
-
-function StatCard({ icon, title, value, description, trend, color }: StatCardProps) {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 transform hover:scale-105 transition-transform">
-      <div className="flex items-center">
-        <div className={`p-3 rounded-xl ${colorVariants[color]}`}>
-          {icon}
-        </div>
-        <div className="ml-4 flex-1">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            {title}
-          </h3>
-          <div className="flex items-baseline">
-            <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-              {value}
-            </p>
-            {trend !== undefined && (
-              <span className={`ml-2 text-sm ${
-                trend >= 0 
-                  ? 'text-green-600 dark:text-green-400' 
-                  : 'text-red-600 dark:text-red-400'
-              }`}>
-                {trend >= 0 ? '+' : ''}{trend}%
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {description}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+interface SubscriberStats {
+  totalSubscriptions: number;
+  savedContent: number;
+  watchedContent: number;
+  totalInteractions: number;
 }
 
 export default function SubscriberDashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState<SubscriberStats | null>(null);
 
   useEffect(() => {
-    if (!user || user.role !== 'subscriber') {
-      router.push('/login');
-      return;
-    }
-    fetchDashboardData();
-  }, [user, router]);
+    const checkUser = async () => {
+      if (authLoading) return;
+      
+      if (user && user.role !== 'subscriber') {
+        if (user.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/dashboard');
+        }
+        return;
+      }
 
-  const fetchDashboardData = async () => {
+      try {
+        const response = await api.get('/subscriber/dashboard');
+        setData(response.data);
+      } catch (error) {
+        console.error('Erro ao buscar dados do dashboard:', error);
+        setError('Erro ao carregar dados do dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkUser();
+  }, [user, router, authLoading]);
+
+  const fetchStats = async () => {
     try {
-      const response = await api.get('/subscriber/dashboard');
-      setData(response.data);
+      const response = await api.get('/subscriber/stats');
+      setStats(response.data);
     } catch (error) {
-      console.error('Erro ao buscar dados do painel:', error);
-    } finally {
-      setLoading(false);
+      console.error('Erro ao buscar estatísticas:', error);
+      setError('Erro ao carregar estatísticas');
     }
   };
 
   if (loading) {
     return (
-      <SubscriberLayout>
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-secondary"></div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
-      </SubscriberLayout>
+      </DashboardLayout>
     );
   }
 
-  if (!data) return null;
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="text-center text-red-600 p-4">{error}</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!data || !stats) return null;
 
   return (
-    <SubscriberLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Meu Feed
-          </h1>
-        </div>
+    <DashboardLayout>
+      <div className="p-6 space-y-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Meu Dashboard
+        </h1>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
-            icon={<FiHeart className="w-8 h-8" />}
-            title="Assinaturas"
-            value={data.stats.totalSubscriptions}
-            description="Canais assinados"
-            color="pink"
+            title="Inscrições"
+            value={stats.totalSubscriptions}
+            icon={<FiBookmark className="w-6 h-6" />}
           />
           <StatCard
-            icon={<FiBookmark className="w-8 h-8" />}
-            title="Salvos"
-            value={data.stats.savedContent}
-            description="Conteúdos salvos"
-            color="blue"
+            title="Conteúdos Salvos"
+            value={stats.savedContent}
+            icon={<FiHeart className="w-6 h-6" />}
           />
           <StatCard
-            icon={<FiClock className="w-8 h-8" />}
-            title="Assistidos"
-            value={data.stats.watchedContent}
-            description="Conteúdos assistidos"
-            color="purple"
+            title="Conteúdos Assistidos"
+            value={stats.watchedContent}
+            icon={<FiPlay className="w-6 h-6" />}
           />
           <StatCard
-            icon={<FiTrendingUp className="w-8 h-8" />}
             title="Interações"
-            value={data.stats.totalInteractions}
-            description="Total de interações"
-            color="green"
+            value={stats.totalInteractions}
+            icon={<FiHeart className="w-6 h-6" />}
           />
         </div>
 
@@ -298,6 +272,6 @@ export default function SubscriberDashboard() {
           </div>
         </div>
       </div>
-    </SubscriberLayout>
+    </DashboardLayout>
   );
 } 

@@ -5,6 +5,7 @@ import Creator from '../models/Creator';
 import Content from '../models/Content';
 import Subscription from '../models/Subscription';
 import Report from '../models/Report';
+import Settings from '../models/Settings';
 
 const router = express.Router();
 
@@ -235,6 +236,22 @@ router.patch('/settings', adminAuth, async (req, res) => {
     res.json(settings);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/stats', adminAuth, async (req, res) => {
+  try {
+    const stats = {
+      totalUsers: 0, // Implementar lógica real
+      revenue: 0,
+      totalContent: 0,
+      pendingReports: 0,
+      userGrowth: 0,
+      revenueGrowth: 0
+    };
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar estatísticas' });
   }
 });
 

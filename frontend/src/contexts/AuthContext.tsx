@@ -14,7 +14,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (credentials: { email: string; password: string }) => Promise<User | null>;
+  login: (email: string, password: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
@@ -31,6 +31,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    if (!loading) {
+      const publicRoutes = ['/', '/login', '/register', '/explore'];
+      const isPublicRoute = publicRoutes.includes(router.pathname);
+
+      if (!user && !isPublicRoute) {
+        router.push('/login');
+        return;
+      }
+
+      if (user && router.pathname === '/login') {
+        if (user.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else if (user.role === 'creator') {
+          router.push('/dashboard');
+        } else {
+          router.push('/subscriber-dashboard');
+        }
+      }
+    }
+  }, [loading, user, router.pathname]);
+
   const checkAuth = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -40,52 +62,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(response.data);
       }
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        localStorage.removeItem('token');
-        delete api.defaults.headers.common['Authorization'];
-      }
-      console.error('Auth check error:', error);
+      localStorage.removeItem('token');
+      delete api.defaults.headers.common['Authorization'];
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const protectedRoutes = ['/dashboard', '/subscriber-dashboard', '/admin/dashboard'];
-    const publicRoutes = ['/', '/login', '/register', '/explore'];
-    
-    if (!loading) {
-      const path = router.pathname;
-      
-      if (protectedRoutes.includes(path) && !user) {
-        router.push('/login');
-      }
-      
-      if (user && ['/login', '/register'].includes(path)) {
-        const redirectPath = user.role === 'creator' 
-          ? '/dashboard' 
-          : user.role === 'admin'
-          ? '/admin/dashboard'
-          : '/subscriber-dashboard';
-        router.push(redirectPath);
-      }
-    }
-  }, [loading, user, router.pathname]);
-
-  const login = async (credentials: { email: string; password: string }): Promise<User | null> => {
+  const login = async (email: string, password: string) => {
     try {
-      const response = await api.post('/auth/login', credentials);
+      const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
       
-      if (token && user) {
-        localStorage.setItem('token', token);
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        setUser(user);
-        return user;
+      localStorage.setItem('token', token);
+      setUser(user);
+
+      // Aguardar a atualização do estado antes de redirecionar
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Redirecionar baseado no papel do usuário
+      if (user.role === 'admin') {
+        await router.push('/admin/dashboard');
+      } else if (user.role === 'creator') {
+        await router.push('/dashboard');
+      } else {
+        await router.push('/subscriber-dashboard');
       }
-      return null;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Erro no login:', error);
       throw error;
     }
   };
@@ -110,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('token');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
-    router.push('/');
+    await router.push('/');
   };
 
   const updateUser = async (data: Partial<User>) => {
