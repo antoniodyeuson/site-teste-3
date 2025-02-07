@@ -7,6 +7,30 @@ import { upload } from '../middleware/upload';
 
 const router = express.Router();
 
+// Função auxiliar para calcular ganhos
+const calculateEarnings = async (creatorId: string) => {
+  try {
+    // Busca todas as assinaturas ativas do criador
+    const subscriptions = await Subscription.find({
+      creatorId,
+      status: 'active'
+    });
+
+    // Calcula o total de ganhos com assinaturas
+    const totalEarnings = subscriptions.reduce((sum, subscription) => {
+      // Aplica a taxa da plataforma (15%)
+      const platformFee = subscription.price * 0.15;
+      const creatorEarning = subscription.price - platformFee;
+      return sum + creatorEarning;
+    }, 0);
+
+    return totalEarnings;
+  } catch (error) {
+    console.error('Error calculating earnings:', error);
+    return 0;
+  }
+};
+
 // Get creator profile
 router.get('/profile', auth, checkRole(['creator']), async (req, res) => {
   try {
@@ -209,14 +233,21 @@ router.get('/dashboard', auth, checkRole(['creator']), async (req, res) => {
     const creatorId = req.user.id;
 
     // Buscar estatísticas
-    const subscribers = await Subscription.countDocuments({ creatorId, status: 'active' });
-    const contents = await Content.find({ creatorId }).sort('-createdAt');
-    const totalViews = contents.reduce((sum, content) => sum + content.views, 0);
-    const totalLikes = contents.reduce((sum, content) => sum + content.likes, 0);
-    const earnings = await calculateEarnings(creatorId); // Implementar esta função
+    const [subscribers, contents, earnings] = await Promise.all([
+      Subscription.countDocuments({ creatorId, status: 'active' }),
+      Content.find({ creatorId }).sort('-createdAt'),
+      calculateEarnings(creatorId)
+    ]);
+
+    // Calcular total de visualizações e curtidas
+    const totalViews = contents.reduce((sum, content) => sum + (content.views || 0), 0);
+    const totalLikes = contents.reduce((sum, content) => sum + (content.likes || 0), 0);
 
     // Buscar inscritos recentes
-    const recentSubscribers = await Subscription.find({ creatorId, status: 'active' })
+    const recentSubscribers = await Subscription.find({ 
+      creatorId, 
+      status: 'active' 
+    })
       .populate('subscriberId', 'name email profileImage')
       .sort('-createdAt')
       .limit(5);
@@ -226,15 +257,16 @@ router.get('/dashboard', auth, checkRole(['creator']), async (req, res) => {
         subscribers,
         earnings,
         views: totalViews,
-        likes: totalLikes
+        likes: totalLikes,
+        contentCount: contents.length
       },
       contents: contents.map(content => ({
         id: content._id,
         title: content.title,
         type: content.type,
-        preview: content.preview,
-        views: content.views,
-        likes: content.likes,
+        preview: content.thumbnailUrl || content.url,
+        views: content.views || 0,
+        likes: content.likes || 0,
         createdAt: content.createdAt
       })),
       subscribers: recentSubscribers.map(sub => ({

@@ -96,33 +96,27 @@ router.get('/content/trending', auth, async (req, res) => {
   }
 });
 
+// Rota para buscar dados do dashboard do assinante
 router.get('/dashboard', auth, checkRole(['subscriber']), async (req, res) => {
   try {
-    const subscriberId = req.user.id;
-
-    // Buscar assinaturas ativas
+    // Buscar assinaturas ativas do usuário
     const subscriptions = await Subscription.find({
-      subscriberId,
+      subscriberId: req.user.id,
       status: 'active'
-    })
-    .populate('creatorId', 'name profileImage')
-    .sort('-startDate')
-    .lean();
+    }).populate('creatorId', 'name profileImage');
 
     // Buscar conteúdo recente dos criadores que o usuário segue
     const creatorIds = subscriptions.map(sub => sub.creatorId._id);
     const recentContent = await Content.find({
-      creatorId: { $in: creatorIds },
-      status: 'active'
+      creatorId: { $in: creatorIds }
     })
-    .populate('creatorId', 'name profileImage')
     .sort('-createdAt')
-    .limit(9)
-    .lean();
+    .limit(10)
+    .populate('creatorId', 'name profileImage');
 
     // Buscar conteúdo salvo
     const savedContent = await SavedContent.find({
-      subscriberId
+      subscriberId: req.user.id
     })
     .populate({
       path: 'contentId',
@@ -131,11 +125,14 @@ router.get('/dashboard', auth, checkRole(['subscriber']), async (req, res) => {
         select: 'name profileImage'
       }
     })
-    .sort('-savedAt')
-    .limit(9)
-    .lean();
+    .limit(10);
 
     res.json({
+      stats: {
+        subscriptions: subscriptions.length,
+        savedContent: await SavedContent.countDocuments({ subscriberId: req.user.id }),
+        totalSpent: subscriptions.reduce((acc, sub) => acc + sub.price, 0)
+      },
       subscriptions: subscriptions.map(sub => ({
         id: sub._id,
         creator: {
@@ -166,8 +163,8 @@ router.get('/dashboard', auth, checkRole(['subscriber']), async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching subscriber dashboard:', error);
-    res.status(500).json({ message: 'Error fetching dashboard data' });
+    console.error('Erro ao buscar dados do dashboard:', error);
+    res.status(500).json({ message: 'Erro ao buscar dados do dashboard' });
   }
 });
 

@@ -12,52 +12,56 @@ export default function Home() {
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
       <Navbar />
       
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-primary to-secondary">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center text-white relative">
-          {/* Botão de tema no canto superior direito da hero section */}
-          <button
-            onClick={toggleTheme}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-            title={theme === 'light' ? 'Modo escuro' : 'Modo claro'}
-          >
-            {theme === 'light' ? (
-              <FiMoon className="w-6 h-6 text-white" />
-            ) : (
-              <FiSun className="w-6 h-6 text-white" />
-            )}
-          </button>
-
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
+      {/* Hero Section com gradiente */}
+      <div className="bg-gradient-to-br from-primary to-secondary">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center text-white relative">
+          <h1 className="text-5xl md:text-7xl font-bold mb-8 animate-fade-in">
             Descubra Conteúdo Exclusivo
           </h1>
-          <p className="text-xl md:text-2xl mb-8 opacity-90">
+          <p className="text-xl md:text-2xl mb-12 opacity-90 max-w-3xl mx-auto">
             Conecte-se com criadores incríveis e acesse conteúdo único
           </p>
-          <div className="space-x-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/explore"
-              className="inline-flex items-center px-8 py-3 border-2 border-white rounded-full text-lg font-medium text-white hover:bg-white hover:text-primary transition-colors"
+              className="inline-flex items-center px-8 py-4 border-2 border-white rounded-xl text-lg font-medium text-white hover:bg-white hover:text-primary transition-all transform hover:scale-105"
             >
               <FiCompass className="mr-2" />
               Explorar Agora
             </Link>
-            <Link
-              href="/register"
-              className="inline-flex items-center px-8 py-3 bg-white rounded-full text-lg font-medium text-primary hover:bg-gray-100 transition-colors"
-            >
-              Começar
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/register"
+                className="inline-flex items-center px-8 py-4 bg-white rounded-xl text-lg font-medium text-primary hover:bg-gray-100 transition-all transform hover:scale-105"
+              >
+                Criar Conta
+              </Link>
+              <button
+                onClick={toggleTheme}
+                className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+                title={theme === 'light' ? 'Modo escuro' : 'Modo claro'}
+              >
+                {theme === 'light' ? (
+                  <FiMoon className="w-6 h-6 text-white" />
+                ) : (
+                  <FiSun className="w-6 h-6 text-white" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Features Section */}
+      {/* Features Section com cards modernos */}
       <div className="py-24 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Por que nos escolher?</h2>
-            <p className="text-gray-600 dark:text-gray-300">Tudo que você precisa para ter sucesso</p>
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">
+              Por que nos escolher?
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300">
+              Tudo que você precisa para ter sucesso
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -85,38 +89,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Featured Creators Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-            Criadores em Destaque
-          </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
-            Conheça alguns dos nossos criadores mais populares
-          </p>
-        </div>
-        
-        {/* Adicione aqui a lista de criadores em destaque */}
-        
-        <div className="text-center mt-12">
-          <Link
-            href="/explore"
-            className="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-dark"
-          >
-            Ver Todos os Criadores
-          </Link>
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="bg-primary text-white py-24">
+      {/* CTA Section com gradiente */}
+      <div className="bg-gradient-to-br from-primary to-secondary py-24 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold mb-8">
+          <h2 className="text-4xl font-bold mb-8">
             Pronto para Começar?
           </h2>
           <Link
             href="/register"
-            className="bg-white text-primary px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition"
+            className="inline-flex items-center px-8 py-4 bg-white rounded-xl text-lg font-medium text-primary hover:bg-gray-100 transition-all transform hover:scale-105"
           >
             Criar sua Conta
           </Link>
@@ -134,9 +115,11 @@ interface FeatureCardProps {
 
 function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
-    <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg text-center">
-      <div className="text-primary mb-4 flex justify-center">{icon}</div>
-      <h3 className="text-xl font-semibold mb-2 dark:text-white">{title}</h3>
+    <div className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-lg transform hover:scale-105 transition-all">
+      <div className="text-primary mb-6 bg-primary/10 p-4 rounded-xl inline-block">
+        {icon}
+      </div>
+      <h3 className="text-xl font-semibold mb-4 dark:text-white">{title}</h3>
       <p className="text-gray-600 dark:text-gray-300">{description}</p>
     </div>
   );

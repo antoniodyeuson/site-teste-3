@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import api from '@/services/api';
+import axios from 'axios';
 
 interface User {
   id: string;
@@ -13,7 +14,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
+  login: (credentials: { email: string; password: string }) => Promise<User | null>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
@@ -39,25 +40,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(response.data);
       }
     } catch (error) {
-      localStorage.removeItem('token');
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem('token');
+        delete api.defaults.headers.common['Authorization'];
+      }
+      console.error('Auth check error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = async (credentials: { email: string; password: string }) => {
-    const response = await api.post('/auth/login', credentials);
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    setUser(user);
+  useEffect(() => {
+    const protectedRoutes = ['/dashboard', '/subscriber-dashboard', '/admin/dashboard'];
+    const publicRoutes = ['/', '/login', '/register', '/explore'];
     
-    if (user.role === 'admin') {
-      router.push('/admin/dashboard');
-    } else if (user.role === 'creator') {
-      router.push('/dashboard');
-    } else {
-      router.push('/explore');
+    if (!loading) {
+      const path = router.pathname;
+      
+      if (protectedRoutes.includes(path) && !user) {
+        router.push('/login');
+      }
+      
+      if (user && ['/login', '/register'].includes(path)) {
+        const redirectPath = user.role === 'creator' 
+          ? '/dashboard' 
+          : user.role === 'admin'
+          ? '/admin/dashboard'
+          : '/subscriber-dashboard';
+        router.push(redirectPath);
+      }
+    }
+  }, [loading, user, router.pathname]);
+
+  const login = async (credentials: { email: string; password: string }): Promise<User | null> => {
+    try {
+      const response = await api.post('/auth/login', credentials);
+      const { token, user } = response.data;
+      
+      if (token && user) {
+        localStorage.setItem('token', token);
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser(user);
+        return user;
+      }
+      return null;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
   };
 
@@ -70,8 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (user.role === 'creator') {
       router.push('/dashboard');
+    } else if (user.role === 'admin') {
+      router.push('/admin/dashboard');
     } else {
-      router.push('/explore');
+      router.push('/subscriber-dashboard');
     }
   };
 

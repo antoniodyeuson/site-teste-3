@@ -25,9 +25,9 @@ mongoose.connect(process.env.MONGODB_URI!)
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/content', contentRoutes);
-app.use('/api/creators', creatorRoutes);
+app.use('/api/creator', creatorRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api', subscriberRoutes);
+app.use('/api/subscriber', subscriberRoutes);
 app.use('/api/admin', adminInitRoutes);
 
 const PORT = process.env.PORT || 5000;

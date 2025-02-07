@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { FiMail, FiLock, FiLogIn } from 'react-icons/fi';
 
 export default function Login() {
   const router = useRouter();
@@ -27,104 +28,134 @@ export default function Login() {
 
     try {
       const user = await login(formData);
-      router.push(user.role === 'creator' ? '/dashboard' : '/explore');
+      if (user) {
+        const redirectPath = user.role === 'creator' 
+          ? '/dashboard' 
+          : user.role === 'admin'
+          ? '/admin/dashboard'
+          : '/subscriber-dashboard';
+        router.push(redirectPath);
+      }
     } catch (err) {
-      setError('Falha ao entrar');
       console.error(err);
+      setError('Email ou senha inválidos');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold mb-6">Entrar</h1>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Não tem uma conta?{' '}
-            <Link
-              href="/register"
-              className="font-medium text-primary hover:text-primary-dark"
-            >
-              Registrar-se
-            </Link>
-          </p>
-        </div>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-primary to-secondary">
+      <Link 
+        href="/"
+        className="p-4 text-white hover:text-gray-200 transition-colors"
+      >
+        <span className="text-2xl font-bold">CreatorHub</span>
+      </Link>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                placeholder="Seu email"
-                value={formData.email}
-                onChange={handleChange}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                placeholder="Sua senha"
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Bem-vindo de volta!</h1>
+            <p className="text-gray-600 mb-8">
+              Não tem uma conta?{' '}
+              <Link
+                href="/register"
+                className="font-medium text-primary hover:text-primary-dark transition-colors"
+              >
+                Registrar-se
+              </Link>
+            </p>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Lembrar-me
-              </label>
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                <p className="text-red-700">{error}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiMail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                    placeholder="Seu email"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Senha
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiLock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                    placeholder="Sua senha"
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="text-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                  Lembrar-me
+                </label>
+              </div>
+
               <Link
                 href="/forgot-password"
-                className="font-medium text-primary hover:text-primary-dark"
+                className="text-sm font-medium text-primary hover:text-primary-dark transition-colors"
               >
                 Esqueceu sua senha?
               </Link>
             </div>
-          </div>
 
-          <div>
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              className="w-full flex justify-center items-center px-4 py-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <FiLogIn className="w-5 h-5 mr-2" />
+                  Entrar
+                </>
+              )}
             </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
