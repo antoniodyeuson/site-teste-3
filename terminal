@@ -1,0 +1,11 @@
+mkdir creatorhub
+cd creatorhub
+mkdir backend frontend
+cd frontend
+npx create-next-app@latest . --typescript --tailwind --eslint
+cd ../backend
+npm init -y
+npm install express cors dotenv mongoose bcryptjs jsonwebtoken multer
+npm install --save-dev typescript @types/express @types/cors @types/node ts-node-dev @types/bcryptjs @types/jsonwebtoken @types/multer
+npm install 
+npm run dev 
