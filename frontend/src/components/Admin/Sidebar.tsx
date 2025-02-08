@@ -1,6 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { FiHome, FiUsers, FiFileText, FiSettings } from 'react-icons/fi';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { FiHome, FiUsers, FiFileText, FiSettings, FiLogOut } from 'react-icons/fi';
 
 const menuItems = [
   {
@@ -26,27 +30,42 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
+  const [mounted, setMounted] = useState(false);
+  const [currentPath, setCurrentPath] = useState('');
+  const { logout } = useAuth();
   const router = useRouter();
+  
+  useEffect(() => {
+    setMounted(true);
+    setCurrentPath(window.location.pathname);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
+  if (!mounted) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 w-64 min-h-screen shadow-lg">
-      <div className="p-4">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-          Admin Panel
+    <div className="w-64 min-h-screen bg-blue-600 text-white">
+      <div className="p-6">
+        <h1 className="text-2xl font-bold">
+          CreatorHub
         </h1>
       </div>
 
-      <nav className="mt-4">
+      <nav className="mt-6">
         {menuItems.map((item) => {
-          const isActive = router.pathname === item.href;
+          const isActive = currentPath === item.href;
           const Icon = item.icon;
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center px-6 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                isActive ? 'bg-gray-100 dark:bg-gray-700 border-l-4 border-primary' : ''
+              className={`flex items-center px-6 py-3 text-white hover:bg-blue-700 transition-colors ${
+                isActive ? 'bg-blue-700' : ''
               }`}
             >
               <Icon className="w-5 h-5 mr-3" />
@@ -55,6 +74,16 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="absolute bottom-0 w-64 p-6">
+        <button
+          onClick={handleLogout}
+          className="flex items-center w-full px-6 py-3 text-white hover:bg-blue-700 transition-colors"
+        >
+          <FiLogOut className="w-5 h-5 mr-3" />
+          Sair
+        </button>
+      </div>
     </div>
   );
 } 

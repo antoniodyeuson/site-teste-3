@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { FiMenu, FiX, FiUser, FiLogIn, FiCompass, FiSun, FiMoon } from 'react-icons/fi';
+import { FiMenu, FiX, FiSun, FiMoon } from 'react-icons/fi';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export default function Navbar() {
@@ -21,14 +21,30 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex md:items-center md:space-x-8">
+          <div className="hidden md:flex md:items-center md:space-x-6">
             <Link
               href="/explore"
               className="text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary transition-colors"
             >
               Explorar
             </Link>
-            {!user ? (
+            
+            {user ? (
+              <>
+                <Link
+                  href={user.role === 'creator' ? '/dashboard' : '/subscriber-dashboard'}
+                  className="text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary transition-colors"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={logout}
+                  className="text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary transition-colors"
+                >
+                  Sair
+                </button>
+              </>
+            ) : (
               <>
                 <Link
                   href="/login"
@@ -38,99 +54,54 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href="/register"
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark transition-colors"
+                  className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors"
                 >
                   Criar Conta
                 </Link>
               </>
-            ) : null}
-            
-            {/* Theme Toggle Button - Always visible */}
+            )}
+
+            {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              title={theme === 'light' ? 'Modo escuro' : 'Modo claro'}
+              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
-              {theme === 'light' ? (
-                <FiMoon className="w-5 h-5" />
-              ) : (
-                <FiSun className="w-5 h-5" />
-              )}
+              {theme === 'light' ? <FiMoon size={20} /> : <FiSun size={20} />}
             </button>
-
-            {/* User Menu */}
-            {user && (
-              <div className="relative">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark"
-                >
-                  <FiUser className="mr-2" />
-                  Meu Painel
-                </Link>
-                <button
-                  onClick={logout}
-                  className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
-                >
-                  Sair
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Mobile menu button */}
-          <div className="flex items-center space-x-4 md:hidden">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              title={theme === 'light' ? 'Modo escuro' : 'Modo claro'}
-            >
-              {theme === 'light' ? (
-                <FiMoon className="w-5 h-5" />
-              ) : (
-                <FiSun className="w-5 h-5" />
-              )}
-            </button>
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white"
-            >
-              <FiMenu className="h-6 w-6" />
-            </button>
-          </div>
+          <button
+            className="md:hidden p-2"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+          </button>
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile Navigation */}
       {isMenuOpen && (
         <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <Link
-              href="/"
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            >
-              Início
-            </Link>
+          <div className="px-2 pt-2 pb-3 space-y-1">
             <Link
               href="/explore"
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary"
             >
-              <div className="flex items-center">
-                <FiCompass className="mr-2" />
-                Explorar
-              </div>
+              Explorar
             </Link>
+            
             {user ? (
               <>
                 <Link
-                  href="/dashboard"
-                  className="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                  href={user.role === 'creator' ? '/dashboard' : '/subscriber-dashboard'}
+                  className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary"
                 >
-                  Meu Painel
+                  Dashboard
                 </Link>
                 <button
                   onClick={logout}
-                  className="block w-full text-left pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                  className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary"
                 >
                   Sair
                 </button>
@@ -139,13 +110,13 @@ export default function Navbar() {
               <>
                 <Link
                   href="/login"
-                  className="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                  className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary"
                 >
                   Entrar
                 </Link>
                 <Link
                   href="/register"
-                  className="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                  className="block px-3 py-2 text-base font-medium text-primary"
                 >
                   Criar Conta
                 </Link>

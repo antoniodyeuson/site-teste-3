@@ -11,7 +11,12 @@ import adminRoutes from './routes/admin.routes';
 const app = express();
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Antes de registrar as rotas
@@ -20,7 +25,7 @@ console.log('Registrando rotas...');
 // Rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/content', contentRoutes);
-app.use('/api/creator', creatorRoutes);
+app.use('/api/creators', creatorRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/subscriber', subscriberRoutes);
 app.use('/api/admin', adminRoutes);

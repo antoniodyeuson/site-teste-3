@@ -7,39 +7,80 @@ import { AuthRequest } from '../types/express';
 
 const router = express.Router();
 
+console.log('Configurando rotas de autenticação');
+
 // Register
-router.post('/register', async (req, res) => {
+router.post('/register', async (req: Request, res: Response) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // Check if user exists
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ message: 'User already exists' });
+    // Validar dados
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ message: 'Todos os campos são obrigatórios' });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Verificar se email já existe
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email já cadastrado' });
+    }
 
-    // Create user
-    user = new User({
+    // Criar usuário
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: role || 'subscriber'
+      role
     });
 
-    await user.save();
-
-    // Create token
+    // Gerar token
     const token = jwt.sign(
-      { userId: user._id },
+      { userId: user._id, role: user.role },
       process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
+      { expiresIn: '7d' }
     );
 
-    res.status(201).json({
+    // Remover senha do objeto de resposta
+    const userResponse = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    };
+
+    res.status(201).json({ user: userResponse, token });
+  } catch (error) {
+    console.error('Erro no registro:', error);
+    res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+});
+
+// Login
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log('Tentativa de login para:', email);
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log('Usuário não encontrado:', email);
+      return res.status(401).json({ message: 'Usuário não encontrado' });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Senha incorreta' });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET!,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Login realizado com sucesso',
       token,
       user: {
         id: user._id,
@@ -49,47 +90,8 @@ router.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Login
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    
-    if (!user) {
-      return res.status(400).json({ message: 'Credenciais inválidas' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Credenciais inválidas' });
-    }
-
-    const token = jwt.sign(
-      { 
-        id: user._id,
-        email: user.email,
-        role: user.role
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '1d' }
-    );
-
-    res.json({ 
-      token, 
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role
-      }
-    });
-  } catch (error) {
     console.error('Erro no login:', error);
-    res.status(500).json({ error: 'Erro ao realizar login' });
+    res.status(401).json({ message: 'Email ou senha inválidos' });
   }
 });
 

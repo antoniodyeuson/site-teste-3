@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import User from '../models/User';
 
 interface AuthRequest extends Request {
@@ -9,23 +9,20 @@ interface AuthRequest extends Request {
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
+    console.log('Token recebido na rota:', req.path, token);
 
     if (!token) {
-      return res.status(401).json({ message: 'Token não fornecido' });
+      throw new Error('Token não fornecido');
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
-    const user = await User.findById(decoded.userId);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+    console.log('Token decodificado:', decoded);
 
-    if (!user) {
-      return res.status(401).json({ message: 'Usuário não encontrado' });
-    }
-
-    req.user = user;
+    req.user = { id: decoded.userId, role: decoded.role };
     next();
   } catch (error) {
-    console.error('Erro de autenticação:', error);
-    res.status(401).json({ message: 'Token inválido' });
+    console.error('Erro na autenticação:', error);
+    res.status(401).json({ message: 'Por favor, faça login' });
   }
 };
 

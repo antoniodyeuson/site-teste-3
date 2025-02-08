@@ -1,26 +1,24 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/router';
-import api from '@/services/api';
-import axios from 'axios';
+import { api } from '@/services/api';
+import Cookies from 'js-cookie';
 
 interface User {
   id: string;
   name: string;
   email: string;
-  role: 'creator' | 'subscriber' | 'admin';
-  profileImage?: string;
+  role: 'admin' | 'creator' | 'subscriber';
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: any) => Promise<void>;
+  register: (name: string, email: string, password: string, role: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateUser: (data: Partial<User>) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+export const AuthContext = createContext({} as AuthContextType);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -29,97 +27,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        const response = await api.get('/auth/me');
-        
-        if (response.data) {
+      const token = Cookies.get('token');
+      if (token) {
+        try {
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          const response = await api.get('/auth/me');
           setUser(response.data);
-        }
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 401) {
-          localStorage.removeItem('token');
+        } catch (error) {
+          Cookies.remove('token');
           delete api.defaults.headers.common['Authorization'];
         }
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     initializeAuth();
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const response = await api.get('/auth/me');
-      setUser(response.data);
-    } catch (error) {
-      // Não remover token aqui, deixar o interceptor cuidar disso
-      console.error('Erro ao verificar autenticação:', error);
-    }
-  };
-
   const login = async (email: string, password: string) => {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
+
+      // Salva o token apenas nos cookies
+      Cookies.set('token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
 
-      // Redirecionar baseado no papel do usuário
-      if (user.role === 'admin') {
-        router.push('/admin/dashboard');
-      } else if (user.role === 'creator') {
-        router.push('/dashboard');
-      } else {
-        router.push('/subscriber-dashboard');
+      // Redireciona baseado no papel do usuário
+      switch (user.role) {
+        case 'admin':
+          await router.push('/admin/dashboard');
+          break;
+        case 'creator':
+          await router.push('/dashboard');
+          break;
+        case 'subscriber':
+          await router.push('/subscriber-dashboard');
+          break;
       }
-    } catch (error) {
-      console.error('Erro no login:', error);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Erro ao fazer login');
+    }
+  };
+
+  const logout = async () => {
+    Cookies.remove('token');
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
+    await router.push('/');
+  };
+
+  const register = async (name: string, email: string, password: string, role: string) => {
+    try {
+      const response = await api.post('/auth/register', {
+        name,
+        email,
+        password,
+        role
+      });
+
+      const { token, user } = response.data;
+      
+      // Salvar token
+      Cookies.set('token', token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      setUser(user);
+
+      // Redirecionar baseado no role
+      if (user.role === 'creator') {
+        router.push('/dashboard');
+      } else if (user.role === 'subscriber') {
+        router.push('/subscriber-dashboard');
+      } else if (user.role === 'admin') {
+        router.push('/admin/dashboard');
+      }
+    } catch (error: any) {
+      console.error('Erro no registro:', error);
       throw error;
     }
   };
 
-  const register = async (data: any) => {
-    const response = await api.post('/auth/register', data);
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    setUser(user);
-  };
-
-  const logout = async () => {
-    localStorage.removeItem('token');
-    delete api.defaults.headers.common['Authorization'];
-    setUser(null);
-    await router.push('/login');
-  };
-
-  const updateUser = async (data: Partial<User>) => {
-    const response = await api.patch('/auth/profile', data);
-    setUser(response.data);
-  };
-
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        register,
-        logout,
-        updateUser
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

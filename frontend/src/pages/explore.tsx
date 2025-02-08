@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import api from '@/services/api';
-import { FiUsers, FiStar, FiLock } from 'react-icons/fi';
+import { FiUsers, FiStar } from 'react-icons/fi';
 
 interface Creator {
-  id: string;
+  _id: string;
   name: string;
   profileImage?: string;
   coverImage?: string;
@@ -14,7 +14,7 @@ interface Creator {
   subscriberCount: number;
   previewContent?: {
     title: string;
-    thumbnail: string;
+    preview: string;
   }[];
 }
 
@@ -22,13 +22,14 @@ export default function Explore() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const router = useRouter();
 
   useEffect(() => {
     const fetchCreators = async () => {
       try {
+        setLoading(true);
         const response = await api.get('/creators/explore');
         setCreators(response.data);
+        setError('');
       } catch (error) {
         console.error('Erro ao buscar criadores:', error);
         setError('Erro ao carregar criadores');
@@ -42,77 +43,80 @@ export default function Explore() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          {/* Esqueleto de carregamento */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div key={n} className="bg-gray-200 dark:bg-gray-700 rounded-xl h-64" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">{error}</p>
+      <div className="max-w-7xl mx-auto px-4 py-8 text-center">
+        <p className="text-red-500">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
+        >
+          Tentar novamente
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Explore Criadores</h1>
-
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Explorar Criadores</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {creators.map((creator) => (
-          <Link href={`/creator/${creator.id}`} key={creator.id}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-              {/* Cover Image */}
-              <div className="relative h-48">
-                {creator.coverImage ? (
-                  <img
-                    src={creator.coverImage}
-                    alt={`Capa de ${creator.name}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-r from-primary to-secondary" />
-                )}
+          <Link 
+            key={creator._id} 
+            href={`/creator/${creator._id}`}
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
+          >
+            {/* Card do criador */}
+            <div className="relative h-32">
+              <img
+                src={creator.coverImage || '/default-cover.jpg'}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
+            </div>
+            
+            <div className="p-4">
+              <div className="flex items-center gap-4 mb-4">
+                <img
+                  src={creator.profileImage || '/default-avatar.jpg'}
+                  alt={creator.name}
+                  className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-800"
+                />
+                <div>
+                  <h2 className="font-semibold text-lg">{creator.name}</h2>
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    <FiUsers className="w-4 h-4 mr-1" />
+                    <span>{creator.subscriberCount} inscritos</span>
+                  </div>
+                </div>
               </div>
-
-              {/* Profile Info */}
-              <div className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden">
-                    {creator.profileImage ? (
-                      <img
-                        src={creator.profileImage}
-                        alt={creator.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 dark:bg-gray-700" />
-                    )}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold">{creator.name}</h2>
-                    <div className="flex items-center text-gray-600 dark:text-gray-400">
-                      <FiUsers className="w-4 h-4 mr-1" />
-                      <span>{creator.subscriberCount} inscritos</span>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="mt-4 text-gray-600 dark:text-gray-400 line-clamp-2">
-                  {creator.bio || 'Nenhuma biografia disponível'}
-                </p>
-
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-primary font-semibold">
-                    R$ {creator.price.toFixed(2)}/mês
-                  </span>
-                  <div className="flex items-center text-yellow-500">
-                    <FiStar className="w-5 h-5 mr-1" />
-                    <span>4.5</span>
-                  </div>
-                </div>
+              
+              <p className="text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">
+                {creator.bio || 'Nenhuma biografia disponível'}
+              </p>
+              
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-primary">
+                  R$ {creator.price.toFixed(2)}/mês
+                </span>
+                <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
+                  Ver perfil
+                </button>
               </div>
             </div>
           </Link>

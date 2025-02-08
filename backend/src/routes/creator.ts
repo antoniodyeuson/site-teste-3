@@ -5,32 +5,9 @@ import Content from '../models/Content';
 import Subscription from '../models/Subscription';
 import { upload } from '../middleware/upload';
 import { AuthRequest } from '../types/express';
+import { calculateEarnings } from '../utils/earnings';
 
 const router = express.Router();
-
-// Função auxiliar para calcular ganhos
-const calculateEarnings = async (creatorId: string) => {
-  try {
-    // Busca todas as assinaturas ativas do criador
-    const subscriptions = await Subscription.find({
-      creatorId,
-      status: 'active'
-    });
-
-    // Calcula o total de ganhos com assinaturas
-    const totalEarnings = subscriptions.reduce((sum, subscription) => {
-      // Aplica a taxa da plataforma (15%)
-      const platformFee = subscription.price * 0.15;
-      const creatorEarning = subscription.price - platformFee;
-      return sum + creatorEarning;
-    }, 0);
-
-    return totalEarnings;
-  } catch (error) {
-    console.error('Error calculating earnings:', error);
-    return 0;
-  }
-};
 
 // Get creator profile
 router.get('/profile', auth, checkRole(['creator']), async (req: AuthRequest, res) => {
@@ -231,33 +208,59 @@ router.get('/preview', async (req, res) => {
 // Get creator dashboard
 router.get('/dashboard', auth, checkRole(['creator']), async (req: AuthRequest, res) => {
   try {
-    const creatorId = req.user!.id;
-    const stats = {
-      subscribers: await Subscription.countDocuments({ creatorId, status: 'active' }),
+    console.log('Acessando dashboard do criador, user:', req.user);
+    const creatorId = req.user.id;
+
+    console.log('Buscando dados para creatorId:', creatorId);
+
+    const dashboardData = {
       earnings: await calculateEarnings(creatorId),
       contentCount: await Content.countDocuments({ creatorId }),
-      // ... outros stats
+      subscriberCount: await Subscription.countDocuments({ 
+        creatorId, 
+        status: 'active' 
+      })
     };
 
-    const recentContent = await Content.find({ creatorId })
-      .sort('-createdAt')
-      .limit(5)
-      .lean();
-
-    const recentSubscribers = await Subscription.find({ creatorId, status: 'active' })
-      .sort('-createdAt')
-      .limit(5)
-      .populate('subscriberId', 'name profileImage')
-      .lean();
-
-    res.json({
-      stats,
-      recentContent,
-      recentSubscribers
-    });
+    console.log('Dados do dashboard:', dashboardData);
+    res.json(dashboardData);
   } catch (error) {
-    console.error('Error fetching dashboard:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Erro ao buscar dados do dashboard:', error);
+    res.status(500).json({ message: 'Erro ao buscar dados do dashboard' });
+  }
+});
+
+// Rota pública para explorar criadores
+router.get('/explore', async (req, res) => {
+  try {
+    const creators = await Creator.find({ role: 'creator' })
+      .select('name profileImage coverImage bio price subscriberCount')
+      .sort('-subscriberCount')
+      .limit(20)
+      .lean();
+
+    const creatorsWithPreview = await Promise.all(
+      creators.map(async (creator) => {
+        // Busca alguns conteúdos de preview do criador
+        const previewContent = await Content.find({
+          creatorId: creator._id,
+          isPreview: true
+        })
+        .select('title preview')
+        .limit(3)
+        .lean();
+
+        return {
+          ...creator,
+          previewContent
+        };
+      })
+    );
+
+    res.json(creatorsWithPreview);
+  } catch (error) {
+    console.error('Erro ao buscar criadores:', error);
+    res.status(500).json({ message: 'Erro ao buscar criadores' });
   }
 });
 

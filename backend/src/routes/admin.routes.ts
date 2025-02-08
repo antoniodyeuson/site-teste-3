@@ -93,24 +93,39 @@ router.delete('/content/:id', auth, checkRole(['admin']), async (req: AuthReques
 });
 
 // Get admin dashboard stats
-router.get('/dashboard', auth, checkRole(['admin']), async (req: AuthRequest, res) => {
+router.get('/dashboard-stats', auth, checkRole(['admin']), async (req: AuthRequest, res) => {
   try {
-    const stats = {
-      totalUsers: await User.countDocuments(),
-      totalContent: await Content.countDocuments(),
-      recentUsers: await User.find()
-        .select('-password')
-        .sort('-createdAt')
-        .limit(5)
-        .lean(),
-      recentContent: await Content.find()
-        .populate('creatorId', 'name')
-        .sort('-createdAt')
-        .limit(5)
-        .lean()
-    };
+    const [
+      totalUsers,
+      totalCreators,
+      totalContent,
+      totalSubscribers,
+      revenueResult
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: 'creator' }),
+      Content.countDocuments(),
+      User.countDocuments({ role: 'subscriber' }),
+      Content.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: { $ifNull: ['$price', 0] } }
+          }
+        }
+      ])
+    ]);
 
-    res.json(stats);
+    // Se não houver resultados da agregação, define totalRevenue como 0
+    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+
+    res.json({
+      totalUsers,
+      totalCreators,
+      totalSubscribers,
+      totalContent,
+      totalRevenue
+    });
   } catch (error) {
     console.error('Error fetching admin stats:', error);
     res.status(500).json({ message: 'Server error' });
