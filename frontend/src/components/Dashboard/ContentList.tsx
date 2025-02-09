@@ -1,14 +1,5 @@
-import { FiEdit2, FiTrash2 } from 'react-icons/fi';
-
-interface Content {
-  id: string;
-  title: string;
-  type: 'image' | 'video' | 'text';
-  preview: string;
-  views: number;
-  likes: number;
-  createdAt: string;
-}
+import { FiEdit2, FiTrash2, FiEye } from 'react-icons/fi';
+import { Content } from '@/types';
 
 interface ContentListProps {
   contents: Content[];
@@ -26,49 +17,46 @@ export default function ContentList({ contents, onEdit, onDelete }: ContentListP
   }
 
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-        Conteúdos Publicados
-      </h2>
-      <div className="space-y-4">
-        {contents.map((content) => (
-          <div
-            key={content.id}
-            className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl"
-          >
-            <div className="flex items-center space-x-4">
-              <img
-                src={content.preview}
-                alt={content.title}
-                className="w-16 h-16 object-cover rounded-lg"
-              />
-              <div>
-                <h3 className="font-medium text-gray-900 dark:text-white">
-                  {content.title}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {new Date(content.createdAt).toLocaleDateString('pt-BR')} •{' '}
-                  {content.views} visualizações • {content.likes} curtidas
-                </p>
-              </div>
-            </div>
-            <div className="flex space-x-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {contents.map((content) => (
+        <div
+          key={content.id}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden"
+        >
+          <div className="relative aspect-w-16 aspect-h-9">
+            <img
+              src={content.preview}
+              alt={content.title}
+              className="object-cover"
+            />
+            <div className="absolute top-2 right-2 flex space-x-2">
               <button
                 onClick={() => onEdit(content)}
-                className="p-2 text-gray-400 hover:text-primary rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75"
               >
-                <FiEdit2 className="w-5 h-5" />
+                <FiEdit2 className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onDelete(content.id)}
-                className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75"
               >
-                <FiTrash2 className="w-5 h-5" />
+                <FiTrash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="p-4">
+            <h3 className="font-semibold text-lg mb-2">{content.title}</h3>
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <div className="flex items-center">
+                <FiEye className="w-4 h-4 mr-1" />
+                {content.views} visualizações
+              </div>
+              <span>{new Date(content.createdAt).toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 } 

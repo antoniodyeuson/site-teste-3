@@ -2,6 +2,7 @@ import express from 'express';
 import { auth, checkRole } from '../middleware/auth';
 import { upload } from '../middleware/upload';
 import Content from '../models/Content';
+import { AuthRequest } from '../types/express';
 
 const router = express.Router();
 
@@ -30,29 +31,47 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Create new content
-router.post('/', auth, checkRole(['creator']), upload.single('file'), async (req, res) => {
+// Get creator's content
+router.get('/creator', auth, checkRole(['creator']), async (req: AuthRequest, res) => {
   try {
-    const { title, description, type } = req.body;
-    const file = req.file;
+    const contents = await Content.find({ 
+      creatorId: req.user!.id 
+    })
+    .sort('-createdAt')
+    .populate('creatorId', 'name profileImage');
 
-    if (!file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+    res.json(contents);
+  } catch (error) {
+    console.error('Erro ao buscar conteúdos:', error);
+    res.status(500).json({ message: 'Erro ao buscar conteúdos' });
+  }
+});
+
+// Create content
+router.post('/', auth, checkRole(['creator']), upload.single('file'), async (req: AuthRequest, res) => {
+  try {
+    const { title, description, type, isPreview, price } = req.body;
+    
+    if (!req.file && type !== 'text') {
+      return res.status(400).json({ message: 'Arquivo não fornecido' });
     }
 
     const content = new Content({
-      creatorId: req.user._id,
       title,
       description,
       type,
-      url: file.path,
-      thumbnailUrl: type === 'video' ? '' : file.path // TODO: Generate video thumbnail
+      url: req.file?.path || '',
+      preview: req.file?.path, // Implementar geração de preview
+      isPreview: Boolean(isPreview),
+      price: Number(price) || 0,
+      creatorId: req.user!.id
     });
 
     await content.save();
     res.status(201).json(content);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Erro ao criar conteúdo:', error);
+    res.status(500).json({ message: 'Erro ao criar conteúdo' });
   }
 });
 
@@ -70,49 +89,51 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Update content
-router.patch('/:id', auth, checkRole(['creator']), async (req, res) => {
+router.patch('/:id', auth, checkRole(['creator']), async (req: AuthRequest, res) => {
   try {
-    const updates = Object.keys(req.body);
-    const allowedUpdates = ['title', 'description'];
-    const isValidOperation = updates.every(update => allowedUpdates.includes(update));
-
-    if (!isValidOperation) {
-      return res.status(400).json({ message: 'Invalid updates' });
-    }
-
-    const content = await Content.findOne({ 
+    const content = await Content.findOne({
       _id: req.params.id,
-      creatorId: req.user._id 
+      creatorId: req.user!.id
     });
 
     if (!content) {
-      return res.status(404).json({ message: 'Content not found' });
+      return res.status(404).json({ message: 'Conteúdo não encontrado' });
     }
 
-    updates.forEach(update => content[update] = req.body[update]);
-    await content.save();
+    const updates = Object.keys(req.body);
+    const allowedUpdates = ['title', 'description', 'isPreview', 'price'];
+    
+    updates.forEach(update => {
+      if (allowedUpdates.includes(update)) {
+        content[update] = req.body[update];
+      }
+    });
 
+    await content.save();
     res.json(content);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Erro ao atualizar conteúdo:', error);
+    res.status(500).json({ message: 'Erro ao atualizar conteúdo' });
   }
 });
 
 // Delete content
-router.delete('/:id', auth, checkRole(['creator']), async (req, res) => {
+router.delete('/:id', auth, checkRole(['creator']), async (req: AuthRequest, res) => {
   try {
     const content = await Content.findOneAndDelete({
       _id: req.params.id,
-      creatorId: req.user._id
+      creatorId: req.user!.id
     });
 
     if (!content) {
-      return res.status(404).json({ message: 'Content not found' });
+      return res.status(404).json({ message: 'Conteúdo não encontrado' });
     }
 
-    res.json({ message: 'Content deleted' });
+    // Implementar remoção do arquivo
+    res.json({ message: 'Conteúdo removido com sucesso' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Erro ao remover conteúdo:', error);
+    res.status(500).json({ message: 'Erro ao remover conteúdo' });
   }
 });
 

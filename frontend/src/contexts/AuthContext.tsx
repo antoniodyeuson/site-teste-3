@@ -8,6 +8,7 @@ interface User {
   name: string;
   email: string;
   role: 'admin' | 'creator' | 'subscriber';
+  profileImage?: string;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (data: Partial<User>) => Promise<void>;
 }
 
 export const AuthContext = createContext({} as AuthContextType);
@@ -48,13 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
-
-      // Salva o token apenas nos cookies
-      Cookies.set('token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      localStorage.setItem('token', token);
       setUser(user);
-
-      // Redireciona baseado no papel do usuário
+      
+      // Redirecionar baseado no papel do usuário
       switch (user.role) {
         case 'admin':
           await router.push('/admin/dashboard');
@@ -66,8 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await router.push('/subscriber-dashboard');
           break;
       }
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Erro ao fazer login');
+    } catch (error) {
+      console.error('Erro no login:', error);
+      throw new Error('Erro ao fazer login');
     }
   };
 
@@ -109,8 +110,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUser = async (data: Partial<User>) => {
+    try {
+      const response = await api.patch('/auth/update', data);
+      setUser(response.data);
+    } catch (error) {
+      console.error('Erro ao atualizar usuário:', error);
+      throw new Error('Erro ao atualizar usuário');
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      register, 
+      logout,
+      updateUser
+    }}>
       {children}
     </AuthContext.Provider>
   );

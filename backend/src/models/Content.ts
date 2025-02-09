@@ -1,34 +1,29 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
 import { Content } from '../types';
 
-const contentSchema = new Schema({
+const contentSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
-  description: {
-    type: String,
-    trim: true
-  },
+  description: String,
   type: {
     type: String,
-    required: true,
-    enum: ['image', 'video', 'audio', 'text']
+    enum: ['image', 'video', 'audio', 'text'],
+    required: true
   },
   url: {
     type: String,
     required: true
   },
-  preview: {
-    type: String
-  },
+  preview: String,
   isPreview: {
     type: Boolean,
     default: false
   },
   price: {
     type: Number,
+    default: 0,
     min: 0
   },
   likes: {
@@ -36,18 +31,12 @@ const contentSchema = new Schema({
     default: 0
   },
   creatorId: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Creator',
     required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
+}, {
+  timestamps: true
 });
 
 export default mongoose.model<Content>('Content', contentSchema); 

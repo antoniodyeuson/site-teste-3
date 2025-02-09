@@ -1,12 +1,12 @@
-import express from 'express';
+import express, { Router, Response } from 'express';
 import { auth } from '../middleware/auth';
 import Message from '../models/Message';
-import { AuthRequest } from '../types/express';
+import { AuthRequest, AuthRequestHandler } from '../types/express';
 
-const router = express.Router();
+const router = Router();
 
 // Get chat history with a user
-router.get('/:userId', auth, async (req: AuthRequest, res) => {
+const getChatHistory: AuthRequestHandler = async (req, res) => {
   try {
     const messages = await Message.find({
       $or: [
@@ -21,7 +21,9 @@ router.get('/:userId', auth, async (req: AuthRequest, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
-});
+};
+
+router.get('/:userId', auth, getChatHistory);
 
 // Send a message
 router.post('/', auth, async (req: AuthRequest, res) => {
@@ -59,9 +61,9 @@ router.patch('/read/:senderId', auth, async (req: AuthRequest, res) => {
   }
 });
 
-router.get('/conversations', auth, async (req: AuthRequest, res) => {
+router.get('/conversations', auth, (async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   // ... resto do código
-});
+}) as AuthRequestHandler);
 
 export default router; 

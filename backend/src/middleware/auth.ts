@@ -1,36 +1,44 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt, { JwtPayload } from 'jsonwebtoken';
-import User from '../models/User';
+import { Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import User, { UserRole } from '../models/User';
+import { AuthRequest, AuthRequestHandler } from '../types/express';
 
-interface AuthRequest extends Request {
-  user?: any;
+// Interface para estender o Request com user
+interface TokenPayload {
+  id: string;
 }
 
-export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const auth: AuthRequestHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    console.log('Token recebido na rota:', req.path, token);
-
     if (!token) {
       throw new Error('Token não fornecido');
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
-    console.log('Token decodificado:', decoded);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    const user = await User.findById(decoded.id);
 
-    req.user = { id: decoded.userId, role: decoded.role };
+    if (!user) {
+      throw new Error('Usuário não encontrado');
+    }
+
+    req.user = user;
     next();
   } catch (error) {
-    console.error('Erro na autenticação:', error);
-    res.status(401).json({ message: 'Por favor, faça login' });
+    res.status(401).json({ message: 'Por favor, autentique-se.' });
   }
 };
 
-export const checkRole = (roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: 'Access denied' });
+export const checkRole = (roles: UserRole[]) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Por favor, autentique-se.' });
     }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Acesso negado.' });
+    }
+
     next();
   };
 }; 

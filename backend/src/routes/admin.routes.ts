@@ -1,13 +1,14 @@
-import express from 'express';
+import { Router, Response } from 'express';
 import { auth, checkRole } from '../middleware/auth';
 import User from '../models/User';
 import Content from '../models/Content';
-import { AuthRequest } from '../types/express';
+import { AuthRequest, AuthRequestHandler } from '../types/express';
+import { UserRole, UserStatus } from '../models/User';
 
-const router = express.Router();
+const router = Router();
 
 // Get all users
-router.get('/users', auth, checkRole(['admin']), async (req: AuthRequest, res) => {
+router.get('/users', auth, checkRole(['admin']), (async (req: AuthRequest, res) => {
   try {
     const users = await User.find()
       .select('-password')
@@ -19,31 +20,38 @@ router.get('/users', auth, checkRole(['admin']), async (req: AuthRequest, res) =
     console.error('Error fetching users:', error);
     res.status(500).json({ message: 'Server error' });
   }
-});
+}) as AuthRequestHandler);
 
 // Update user
-router.patch('/users/:id', auth, checkRole(['admin']), async (req: AuthRequest, res) => {
+router.patch('/users/:id', auth, checkRole(['admin']), async (req: AuthRequest, res: Response) => {
   try {
-    const updates = Object.keys(req.body);
-    const allowedUpdates = ['name', 'email', 'role', 'status'];
-    const isValidOperation = updates.every(update => allowedUpdates.includes(update));
-
-    if (!isValidOperation) {
-      return res.status(400).json({ message: 'Invalid updates' });
-    }
-
+    const { role, status } = req.body;
     const user = await User.findById(req.params.id);
+
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: 'Usuário não encontrado' });
+      return;
     }
 
-    updates.forEach(update => user[update] = req.body[update]);
+    // Validar role e status
+    if (role && !['admin', 'creator', 'subscriber'].includes(role)) {
+      res.status(400).json({ message: 'Role inválida' });
+      return;
+    }
+
+    if (status && !['active', 'suspended', 'banned'].includes(status)) {
+      res.status(400).json({ message: 'Status inválido' });
+      return;
+    }
+
+    if (role) user.role = role as UserRole;
+    if (status) user.status = status as UserStatus;
     await user.save();
 
     res.json(user);
   } catch (error) {
-    console.error('Error updating user:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Erro ao atualizar usuário:', error);
+    res.status(500).json({ message: 'Erro ao atualizar usuário' });
   }
 });
 

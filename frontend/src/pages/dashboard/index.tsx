@@ -1,64 +1,62 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/router';
-import api from '@/services/api';
-import { FiPlus, FiUsers, FiDollarSign, FiEye, FiFileText, FiTrendingUp, FiHeart, FiUpload } from 'react-icons/fi';
 import DashboardLayout from '@/components/Dashboard/DashboardLayout';
-import ContentList from '@/components/Dashboard/ContentList';
-import SubscribersList from '@/components/Dashboard/SubscribersList';
-import UploadModal from '@/components/Dashboard/UploadModal';
-import StatCard from '@/components/Dashboard/StatCard';
 import DashboardStats from '@/components/Dashboard/DashboardStats';
+import ContentList from '@/components/Dashboard/ContentList';
+import UploadModal from '@/components/Dashboard/UploadModal';
+import { api } from '@/services/api';
+import { FiPlus } from 'react-icons/fi';
+import { Content } from '@/types';
 
 interface DashboardData {
-  earnings: number;
-  contentCount: number;
-  subscriberCount: number;
-  recentContent?: Array<{
-    id: string;
-    title: string;
-    type: string;
-    createdAt: string;
-  }>;
-  recentSubscribers?: Array<{
-    id: string;
-    name: string;
-    profileImage?: string;
-    subscribedAt: string;
-  }>;
+  stats: {
+    subscribers: number;
+    earnings: number;
+    views: number;
+    likes: number;
+  };
+  recentContent: Content[];
 }
 
-export default function CreatorDashboard() {
+export default function Dashboard() {
   const { user } = useAuth();
-  const router = useRouter();
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
+    stats: {
+      subscribers: 0,
+      earnings: 0,
+      views: 0,
+      likes: 0
+    },
+    recentContent: []
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    if (user.role !== 'creator') {
-      router.push('/');
-      return;
-    }
-
     fetchDashboardData();
-  }, [user, router]);
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
       const response = await api.get('/creators/dashboard');
-      setData(response.data);
+      const formattedContent = response.data.recentContent.map((content: Partial<Content>) => ({
+        ...content,
+        preview: content.preview || content.url || '',
+        isPreview: content.isPreview || false,
+        url: content.url || '',
+        views: content.views || 0,
+        likes: content.likes || 0
+      })) as Content[];
+
+      setDashboardData({
+        stats: response.data.stats,
+        recentContent: formattedContent
+      });
       setError('');
-    } catch (error: any) {
-      console.error('Erro ao buscar dados do dashboard:', error);
-      setError(error.response?.data?.message || 'Erro ao carregar dados do dashboard');
+    } catch (err) {
+      console.error('Erro ao buscar dados do dashboard:', err);
+      setError('Erro ao carregar dados do dashboard');
     } finally {
       setLoading(false);
     }
@@ -66,105 +64,80 @@ export default function CreatorDashboard() {
 
   const handleUpload = async (formData: FormData) => {
     try {
-      await api.post('/creators/content', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      await api.post('/content', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      await fetchDashboardData();
+      fetchDashboardData();
       setIsUploadModalOpen(false);
     } catch (error) {
       console.error('Erro ao fazer upload:', error);
-      throw error;
+      alert('Erro ao fazer upload do conteúdo');
     }
   };
 
-  const handleEditContent = async (content: any) => {
-    // Implementar edição de conteúdo
+  const handleEditContent = (content: Content) => {
+    console.log('Editar conteúdo:', content);
   };
 
   const handleDeleteContent = async (contentId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este conteúdo?')) {
+      return;
+    }
+
     try {
       await api.delete(`/content/${contentId}`);
-      await fetchDashboardData();
-    } catch (error) {
-      console.error('Erro ao excluir conteúdo:', error);
+      fetchDashboardData();
+    } catch (err) {
+      console.error('Erro ao excluir conteúdo:', err);
+      alert('Erro ao excluir conteúdo');
     }
   };
 
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <div>Carregando...</div>
       </DashboardLayout>
     );
   }
-
-  if (error) {
-    return (
-      <DashboardLayout>
-        <div className="text-center text-red-600 p-4">{error}</div>
-      </DashboardLayout>
-    );
-  }
-
-  if (!data) return null;
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Dashboard
+          <h1 className="text-2xl font-bold">
+            Bem-vindo, {user?.name}
           </h1>
           <button
             onClick={() => setIsUploadModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+            className="btn-primary flex items-center"
           >
-            <FiUpload className="w-5 h-5 mr-2" />
+            <FiPlus className="w-5 h-5 mr-2" />
             Novo Conteúdo
           </button>
         </div>
 
-        {error && (
-          <div className="bg-red-50 text-red-500 p-4 rounded-lg">
+        {error ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {error}
           </div>
+        ) : (
+          <>
+            <DashboardStats stats={dashboardData.stats} />
+            <ContentList
+              contents={dashboardData.recentContent}
+              onEdit={handleEditContent}
+              onDelete={handleDeleteContent}
+            />
+          </>
         )}
 
-        {data && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">Ganhos</h3>
-              <p className="text-2xl font-bold text-primary">
-                R$ {data.earnings.toFixed(2)}
-              </p>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">Conteúdos</h3>
-              <p className="text-2xl font-bold text-primary">
-                {data.contentCount}
-              </p>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">Inscritos</h3>
-              <p className="text-2xl font-bold text-primary">
-                {data.subscriberCount}
-              </p>
-            </div>
-          </div>
-        )}
+        <UploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onUpload={handleUpload}
+        />
       </div>
-
-      <UploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        onUpload={handleUpload}
-      />
     </DashboardLayout>
   );
 } 

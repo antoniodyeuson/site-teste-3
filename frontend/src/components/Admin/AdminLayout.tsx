@@ -3,9 +3,10 @@ import Sidebar from './Sidebar';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
+  title?: string;
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function AdminLayout({ children, title }: AdminLayoutProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="flex">
         <Sidebar />
         <main className="flex-1">
+          {title && <h1 className="text-2xl font-bold mb-6">{title}</h1>}
           {children}
         </main>
       </div>

@@ -1,13 +1,13 @@
-import express, { Request } from 'express';
+import express, { Request, Router, Response } from 'express';
 import { auth, checkRole } from '../middleware/auth';
 import Subscription from '../models/Subscription';
 import Content from '../models/Content';
-import Creator from '../models/Creator';
+import Creator, { CreatorDocument } from '../models/Creator';
 import SavedContent from '../models/SavedContent';
-import User from '../models/User';
+import User, { UserDocument } from '../models/User';
 import Purchase from '../models/Purchase';
 import { User as UserType, Content as ContentType, Purchase as PurchaseType } from '../types';
-import { AuthRequest } from '../types/express';
+import { AuthRequest, AuthRequestHandler } from '../types/express';
 
 interface PopulatedSubscription {
   creatorId: {
@@ -35,10 +35,10 @@ interface PopulatedContent {
   createdAt: Date;
 }
 
-const router = express.Router();
+const router = Router();
 
 // Get subscriber's subscriptions
-router.get('/subscriptions/my', auth, checkRole(['subscriber']), async (req: AuthRequest, res) => {
+router.get('/subscriptions/my', auth, checkRole(['subscriber']), (async (req: AuthRequest, res) => {
   try {
     const subscriptions = await Subscription.find({
       subscriberId: req.user!.id,
@@ -56,12 +56,12 @@ router.get('/subscriptions/my', auth, checkRole(['subscriber']), async (req: Aut
 
     res.json(creators);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Erro ao buscar inscrições' });
   }
-});
+}) as AuthRequestHandler);
 
 // Get recommended creators
-router.get('/creators/recommended', auth, async (req: AuthRequest, res) => {
+router.get('/creators/recommended', auth, async (req: AuthRequest, res: Response) => {
   try {
     const creators = await Creator.find()
       .select('name profileImage coverImage price')
@@ -88,7 +88,7 @@ router.get('/creators/recommended', auth, async (req: AuthRequest, res) => {
 });
 
 // Get trending content
-router.get('/content/trending', auth, async (req: AuthRequest, res) => {
+router.get('/content/trending', auth, async (req: AuthRequest, res: Response) => {
   try {
     const trendingContent = await Content.find({ status: 'active' })
       .sort({ likes: -1, createdAt: -1 })
@@ -127,7 +127,7 @@ router.get('/content/trending', auth, async (req: AuthRequest, res) => {
 });
 
 // Rota para buscar dados do dashboard do assinante
-router.get('/dashboard', auth, checkRole(['subscriber']), async (req: AuthRequest, res) => {
+router.get('/dashboard', auth, checkRole(['subscriber']), async (req: AuthRequest, res: Response) => {
   try {
     const data = {
       stats: {
@@ -149,7 +149,7 @@ router.get('/dashboard', auth, checkRole(['subscriber']), async (req: AuthReques
 });
 
 // Salvar conteúdo
-router.post('/content/save/:contentId', auth, checkRole(['subscriber']), async (req: AuthRequest, res) => {
+router.post('/content/save/:contentId', auth, checkRole(['subscriber']), async (req: AuthRequest, res: Response) => {
   try {
     const { contentId } = req.params;
     const subscriberId = req.user!.id;
@@ -188,7 +188,7 @@ router.post('/content/save/:contentId', auth, checkRole(['subscriber']), async (
 });
 
 // Remover conteúdo salvo
-router.delete('/content/save/:contentId', auth, checkRole(['subscriber']), async (req: AuthRequest, res) => {
+router.delete('/content/save/:contentId', auth, checkRole(['subscriber']), async (req: AuthRequest, res: Response) => {
   try {
     const { contentId } = req.params;
     const subscriberId = req.user!.id;
@@ -209,7 +209,7 @@ router.delete('/content/save/:contentId', auth, checkRole(['subscriber']), async
 });
 
 // Listar conteúdos salvos
-router.get('/content/saved', auth, async (req: AuthRequest, res) => {
+router.get('/content/saved', auth, async (req: AuthRequest, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 12;
@@ -271,22 +271,28 @@ router.get('/stats', auth, checkRole(['subscriber']), async (req, res) => {
 // Rota para listar criadores
 router.get('/creators', auth, async (req, res) => {
   try {
-    const creators = await User.find({ role: 'creator' });
+    const creators = await Creator.find()
+      .select('name email profileImage coverImage price')
+      .populate('user', 'name email profileImage');
+      
     const creatorsData = creators.map(creator => ({
       id: creator._id,
-      name: creator.name,
-      profileImage: creator.profileImage,
+      name: creator.user.name,
+      email: creator.user.email,
+      profileImage: creator.user.profileImage,
       coverImage: creator.coverImage,
       price: creator.price
     }));
+
     res.json(creatorsData);
   } catch (error) {
+    console.error('Erro ao buscar criadores:', error);
     res.status(500).json({ message: 'Erro ao buscar criadores' });
   }
 });
 
 // Rota para buscar conteúdo de um criador
-router.get('/creator/:creatorId/content', auth, async (req: AuthRequest, res) => {
+router.get('/creator/:creatorId/content', auth, async (req: AuthRequest, res: Response) => {
   try {
     const { creatorId } = req.params;
     const subscriberId = req.user!._id;
@@ -324,5 +330,25 @@ router.get('/creator/:creatorId/content', auth, async (req: AuthRequest, res) =>
     res.status(500).json({ message: 'Erro ao buscar conteúdo' });
   }
 });
+
+const getProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const subscriber = await User.findById(req.user!.id)
+      .select('-password')
+      .lean();
+
+    if (!subscriber) {
+      res.status(404).json({ message: 'Assinante não encontrado' });
+      return;
+    }
+
+    res.json(subscriber);
+  } catch (error) {
+    console.error('Erro ao buscar perfil:', error);
+    res.status(500).json({ message: 'Erro ao buscar perfil' });
+  }
+};
+
+router.get('/profile', auth, getProfile);
 
 export default router; 

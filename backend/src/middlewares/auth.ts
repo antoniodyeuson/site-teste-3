@@ -1,32 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { User } from '../types';
+import User, { UserDocument } from '../models/User';
+import { AuthRequest } from '../types/express';
 
-interface JwtUserPayload {
-  userId: string;
-  email: string;
+interface JwtPayload {
+  id: string;
   role: string;
 }
 
-export const auth = async (req: Request, res: Response, next: NextFunction) => {
+export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-
     if (!token) {
-      return res.status(401).json({ message: 'No auth token' });
+      res.status(401).json({ message: 'Token não fornecido' });
+      return;
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as JwtUserPayload;
-    
-    req.user = {
-      id: decoded.userId,
-      email: decoded.email,
-      role: decoded.role
-    } as User;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+    const user = await User.findById(decoded.id);
 
+    if (!user) {
+      res.status(401).json({ message: 'Usuário não encontrado' });
+      return;
+    }
+
+    req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Please authenticate' });
+    res.status(401).json({ message: 'Token inválido' });
   }
 };
 

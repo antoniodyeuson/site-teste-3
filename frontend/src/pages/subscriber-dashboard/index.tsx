@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/router';
 import api from '@/services/api';
-import { FiHeart, FiBookmark, FiClock, FiTrendingUp, FiPlay, FiUsers } from 'react-icons/fi';
+import { FiHeart, FiBookmark, FiClock, FiTrendingUp, FiPlay, FiUsers, FiDollarSign, FiCreditCard } from 'react-icons/fi';
 import SubscriberLayout from '@/components/Subscriber/SubscriberLayout';
 import Link from 'next/link';
 import StatCard from '@/components/Dashboard/StatCard';
@@ -40,11 +40,10 @@ interface DashboardData {
   }>;
 }
 
-interface SubscriberStats {
+interface DashboardStats {
   totalSubscriptions: number;
+  totalSpent: number;
   savedContent: number;
-  watchedContent: number;
-  totalInteractions: number;
   activeSubscriptions: number;
 }
 
@@ -54,6 +53,12 @@ export default function SubscriberDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [stats, setStats] = useState<DashboardStats>({
+    totalSubscriptions: 0,
+    totalSpent: 0,
+    savedContent: 0,
+    activeSubscriptions: 0
+  });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -75,6 +80,7 @@ export default function SubscriberDashboard() {
           savedContent: response.data.savedContent || []
         };
         setData(statsData);
+        setStats(response.data);
       } catch (error) {
         if (axios.isAxiosError(error) && error.response?.status !== 401) {
           console.error('Erro ao buscar dados do dashboard:', error);
@@ -137,28 +143,31 @@ export default function SubscriberDashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
-            title="Assinaturas Ativas"
-            value={data.stats.activeSubscriptions}
-            icon={FiUsers}
-            loading={loading}
+            title="Total de Inscrições"
+            value={stats.totalSubscriptions.toString()}
+            icon={<FiHeart className="w-6 h-6" />}
+            description="Inscrições realizadas"
           />
+
+          <StatCard
+            title="Total Gasto"
+            value={`R$ ${stats.totalSpent.toFixed(2)}`}
+            icon={<FiDollarSign className="w-6 h-6" />}
+            description="Em todas as inscrições"
+          />
+
           <StatCard
             title="Conteúdos Salvos"
-            value={data.stats.savedContent}
-            icon={FiBookmark}
-            loading={loading}
+            value={stats.savedContent.toString()}
+            icon={<FiBookmark className="w-6 h-6" />}
+            description="Itens na sua lista"
           />
+
           <StatCard
-            title="Conteúdos Vistos"
-            value={data.stats.watchedContent}
-            icon={FiClock}
-            loading={loading}
-          />
-          <StatCard
-            title="Interações"
-            value={data.stats.totalInteractions}
-            icon={FiTrendingUp}
-            loading={loading}
+            title="Inscrições Ativas"
+            value={stats.activeSubscriptions.toString()}
+            icon={<FiCreditCard className="w-6 h-6" />}
+            description="Assinaturas vigentes"
           />
         </div>
       </div>

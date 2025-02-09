@@ -4,34 +4,43 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   FiHome,
+  FiFileText,
   FiUsers,
   FiDollarSign,
   FiSettings,
   FiX,
   FiLogOut,
-  FiFileText
+  FiUser,
+  FiCreditCard
 } from 'react-icons/fi';
+import { User } from '@/types';
 
 interface SidebarProps {
+  user: User;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+const navigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: FiHome },
+  { name: 'Conteúdo', href: '/dashboard/content', icon: FiFileText },
+  { name: 'Inscritos', href: '/dashboard/subscribers', icon: FiUsers },
+  { name: 'Finanças', href: '/dashboard/finances', icon: FiDollarSign },
+  { name: 'Perfil', href: '/dashboard/profile', icon: FiUser },
+  { name: 'Saques', href: '/dashboard/withdrawals', icon: FiCreditCard },
+];
+
+export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const router = useRouter();
   const { logout } = useAuth();
 
-  const menuItems = [
-    { icon: FiHome, label: 'Dashboard', href: '/dashboard' },
-    { icon: FiFileText, label: 'Conteúdos', href: '/dashboard/content' },
-    { icon: FiUsers, label: 'Inscritos', href: '/dashboard/subscribers' },
-    { icon: FiDollarSign, label: 'Finanças', href: '/dashboard/finances' },
-    { icon: FiSettings, label: 'Configurações', href: '/dashboard/settings' }
-  ];
-
   const handleLogout = async () => {
-    await logout();
-    router.push('/login');
+    try {
+      await logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
   };
 
   return (
@@ -46,49 +55,73 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-gradient-to-b from-primary to-secondary transform ${
+        className={`fixed top-0 left-0 z-30 h-full w-64 bg-primary text-white transform transition-transform duration-200 ease-in-out md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 transition-transform duration-200 ease-in-out`}
+        }`}
       >
-        <div className="flex flex-col h-full text-white">
-          <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4">
             <Link href="/dashboard" className="text-xl font-bold">
               CreatorHub
             </Link>
             <button
-              className="md:hidden"
               onClick={onClose}
+              className="md:hidden p-2 hover:bg-primary-dark rounded-lg"
             >
               <FiX className="w-6 h-6" />
             </button>
           </div>
 
-          <nav className="flex-1 px-4 py-4 space-y-1">
-            {menuItems.map((item) => {
+          {/* User Info */}
+          <div className="p-4 border-b border-primary-dark">
+            <div className="flex items-center space-x-3">
+              {user.profileImage ? (
+                <img
+                  src={user.profileImage}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-full"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-primary-dark flex items-center justify-center">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <div className="font-medium">{user.name}</div>
+                <div className="text-sm opacity-75">Criador</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = router.pathname === item.href;
-
+              
               return (
                 <Link
-                  key={item.href}
+                  key={item.name}
                   href={item.href}
-                  className={`flex items-center px-4 py-3 rounded-xl ${
+                  className={`flex items-center px-4 py-3 rounded-xl transition-colors ${
                     isActive
-                      ? 'bg-white text-primary'
-                      : 'text-white/90 hover:bg-white/10'
-                  } transition-colors`}
+                      ? 'bg-primary-dark text-white'
+                      : 'text-white/90 hover:bg-primary-dark'
+                  }`}
                 >
                   <Icon className="w-5 h-5 mr-3" />
-                  {item.label}
+                  {item.name}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="p-4 border-t border-white/10">
+          {/* Logout Button */}
+          <div className="p-4 border-t border-primary-dark">
             <button
               onClick={handleLogout}
-              className="flex items-center w-full px-4 py-3 text-white/90 rounded-xl hover:bg-white/10 transition-colors"
+              className="flex items-center w-full px-4 py-3 text-white/90 rounded-xl hover:bg-primary-dark transition-colors"
             >
               <FiLogOut className="w-5 h-5 mr-3" />
               Sair

@@ -16,14 +16,49 @@ export interface User extends Document {
 }
 
 export interface Creator extends User {
+  id: string;
+  email: string;
+  password: string;
+  name: string;
+  role: 'creator';
+  profileImage?: string;
   bio?: string;
+  cpf?: string;
+  birthDate?: Date;
+  phone?: string;
   subscriptionPrice: number;
   commissionRate: number;
   totalEarnings: number;
   subscriberCount: number;
   contentCount: number;
   stripeAccountId?: string;
-  stripePriceId?: string;
+  bankInfo?: {
+    bankName: string;
+    accountType: 'corrente' | 'poupanca';
+    agency: string;
+    accountNumber: string;
+    pixKey?: string;
+    verified: boolean;
+  };
+  notifications: {
+    newSubscriber: boolean;
+    newMessage: boolean;
+    newPurchase: boolean;
+    newTip: boolean;
+  };
+  verificationStatus: {
+    cpfVerified: boolean;
+    bankVerified: boolean;
+    emailVerified: boolean;
+  };
+  allowTips: boolean;
+  minimumTipAmount: number;
+  allowMessages: boolean;
+  allowComments: boolean;
+  notifyNewSubscribers: boolean;
+  payoutMethod: 'stripe' | 'bank';
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Content extends Document {
@@ -46,4 +81,15 @@ export interface Purchase extends Document {
   contentId: Content;
   price: number;
   createdAt: Date;
+}
+
+export interface Withdrawal {
+  creatorId: string;
+  amount: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  paymentMethod: 'pix' | 'bank_transfer';
+  transactionId?: string;
+  failureReason?: string;
+  createdAt: Date;
+  completedAt?: Date;
 } 

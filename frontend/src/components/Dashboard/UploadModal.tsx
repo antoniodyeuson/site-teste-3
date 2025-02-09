@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiUpload, FiX } from 'react-icons/fi';
+import { FiX, FiUpload, FiDollarSign, FiLock } from 'react-icons/fi';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -10,9 +10,11 @@ interface UploadModalProps {
 export default function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,17 +22,20 @@ export default function UploadModal({ isOpen, onClose, onUpload }: UploadModalPr
 
     try {
       setLoading(true);
-      setError('');
-
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', description);
+      formData.append('price', price);
+      formData.append('isPreview', String(isPreview));
       formData.append('file', file);
+      if (previewFile) {
+        formData.append('preview', previewFile);
+      }
 
       await onUpload(formData);
       handleClose();
     } catch (error) {
-      setError('Erro ao fazer upload do conteúdo');
+      console.error('Erro no upload:', error);
     } finally {
       setLoading(false);
     }
@@ -39,8 +44,10 @@ export default function UploadModal({ isOpen, onClose, onUpload }: UploadModalPr
   const handleClose = () => {
     setTitle('');
     setDescription('');
+    setPrice('');
+    setIsPreview(false);
     setFile(null);
-    setError('');
+    setPreviewFile(null);
     onClose();
   };
 
@@ -49,83 +56,102 @@ export default function UploadModal({ isOpen, onClose, onUpload }: UploadModalPr
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
-        <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={handleClose} />
+        <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
         
-        <div className="relative bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Novo Conteúdo
-            </h2>
+        <div className="relative bg-white dark:bg-gray-800 rounded-lg w-full max-w-md p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Novo Conteúdo</h2>
             <button onClick={handleClose}>
               <FiX className="w-6 h-6" />
             </button>
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg">
-              {error}
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Título
-              </label>
+              <label className="block text-sm font-medium mb-1">Título</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Descrição
-              </label>
+              <label className="block text-sm font-medium mb-1">Descrição</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                className="input-field"
                 rows={3}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Arquivo
+              <label className="block text-sm font-medium mb-1">Preço (R$)</label>
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="input-field"
+                min="0"
+                step="0.01"
+              />
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isPreview"
+                checked={isPreview}
+                onChange={(e) => setIsPreview(e.target.checked)}
+                className="mr-2"
+              />
+              <label htmlFor="isPreview" className="text-sm">
+                Conteúdo gratuito/preview
               </label>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Arquivo Principal</label>
               <input
                 type="file"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="w-full"
+                className="input-field"
+                accept="image/*,video/*"
                 required
               />
             </div>
 
-            <div className="flex justify-end space-x-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Preview (opcional)</label>
+              <input
+                type="file"
+                onChange={(e) => setPreviewFile(e.target.files?.[0] || null)}
+                className="input-field"
+                accept="image/*"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Imagem de preview para conteúdo privado
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="btn-secondary"
+                disabled={loading}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
+                className="btn-primary"
                 disabled={loading}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <FiUpload className="w-5 h-5 mr-2" />
-                    Upload
-                  </>
-                )}
+                {loading ? 'Enviando...' : 'Enviar'}
               </button>
             </div>
           </form>
